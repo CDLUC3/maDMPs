@@ -81,11 +81,51 @@ def query_fasta(marker, expeditions, names=nil)
 end
 
 #expeditions = get_expeditions
-markers = get_markers(PROJECT_ID)
+#markers = get_markers(PROJECT_ID)
 
-#(1..10).map{|i| puts get_expeditions(i)}
+projects = (1..30).map do |project_id| 
+  expeditions = get_expeditions(project_id)
+  project = { projectId: project_id }
+  
+  if expeditions.is_a?(Array) && expeditions.length > 0 && expeditions[0]['project'].is_a?(Hash)
+    project = expeditions[0]['project']
+    project_json = {
+      projectCode: project['projectCode'] || '',
+      projectTitle: project['projectTitle'] || ''
+    }
+    
+    markers = get_markers(project_id)
+    project[:markers] = markers
+    
+    project[:expeditions] = expeditions.map do |expedition|
+      {
+        expeditionId: expedition['expeditionId'] || '', 
+        expeditionCode: expedition['expeditionCode'] || '', 
+        expeditionTitle: expedition['expeditionTitle'] || '', 
+        ts: expedition['ts'] || Time.now.to_s,
+        user: {
+          userId: expedition['userId'] || '', 
+          username: expedition['username'] || '', 
+          projectAdmin: expedition['projectAdmin'] || 'false'
+        }, 
+        expeditionBcid: expedition['expeditionBcid'] || '', 
+        entityBcids: expedition['entityBcids'] || '', 
+        public: expedition['public'] || 'true'
+      }
+    end
+  elsif expeditions.length > 0
+    project['error_code'] = expeditions['httpStatusCode']
+    project['error_msg'] = expeditions['usrMessage']
+  else
+    project['error_code'] = 500
+    project['error_msg'] = "The API returned a Success code but the array was empty."
+  end
+  project
+end
 
-puts markers
+File.open('tmp/output.json', 'w'){ |file| file.write(JSON.pretty_generate({ projects: projects }) } 
+
+#puts markers
 
 #res = query_metadata([431], 'polynesia')
 #puts res
