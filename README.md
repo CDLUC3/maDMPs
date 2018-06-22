@@ -15,7 +15,7 @@ JSON output:
     {
       "projectId": "99999", 
       "projectCode": "ABCD", 
-      "projectTitle"=>"Sample Project",
+      "projectTitle": "Sample Project",
     
       "markers": [
         {
