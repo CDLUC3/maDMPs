@@ -1,4 +1,4 @@
-# This is a utility script to query the Geome-db FIMS database for analysis that was 
+# This is a utility script to query the Geome-db FIMS database for analysis that was
 # based on the R scripts provided by DIPnet: https://github.com/DIPnet/fimsR-access
 require 'json'
 require 'uri'
@@ -6,30 +6,45 @@ require 'net/http'
 
 class Geome
   # CONSTANTS
-  PROJECT_ID = 25
+  #PROJECT_ID = 25
   FIMS_ROOT_URL = "https://www.geome-db.org/rest/"
   FIMS_EXPEDITION_PATH = "projects/%{project_id}/expeditions"
   FIMS_QUERY_PATH = "projects/query/fastq"
   FIMS_FASTA_QUERY_PATH = "projects/query/fasta"
   FIMS_FASTA_MARKER_PATH = "projects/%{project_id}/config/lists/markers/fields"
 
+  def get_project_identifiers
+    [:projectId, :projectCode]
+  end
+  def get_expedition_identifiers
+    [:expeditionId, :expeditionCode]
+  end
+
+  # JSON fields to skip when inserting source_json
+  def get_project_exclusions
+    [:expeditions]
+  end
+  def get_expedition_exclusions
+    [:user]
+  end
+
   # Expecting an array of expeditions in the following JSON format:
-  #  {"expeditionId"=>431, 
-  #   "expeditionCode"=>"acaach_CyB_JD", 
-  #   "expeditionTitle"=>"acaach_CyB_JD spreadsheet", 
-  #   "ts"=>"2016-12-16 19:18:51", 
+  #  {"expeditionId"=>431,
+  #   "expeditionCode"=>"acaach_CyB_JD",
+  #   "expeditionTitle"=>"acaach_CyB_JD spreadsheet",
+  #   "ts"=>"2016-12-16 19:18:51",
   #   "project"=>{
-  #     "projectId"=>25, 
-  #     "projectCode"=>"DIPNET", 
+  #     "projectId"=>25,
+  #     "projectCode"=>"DIPNET",
   #     "projectTitle"=>"DIPNet"
-  #   }, 
+  #   },
   #   "user"=>{
-  #     "userId"=>145, 
-  #     "username"=>"dipnetCurator", 
+  #     "userId"=>145,
+  #     "username"=>"dipnetCurator",
   #     "projectAdmin"=>false
-  #   }, 
-  #   "expeditionBcid"=>nil, 
-  #   "entityBcids"=>nil, 
+  #   },
+  #   "expeditionBcid"=>nil,
+  #   "entityBcids"=>nil,
   #   "public"=>true}
   def get_expeditions(project_id)
     uri = URI("#{FIMS_ROOT_URL}#{FIMS_EXPEDITION_PATH}".gsub('%{project_id}', project_id.to_s))
@@ -39,9 +54,9 @@ class Geome
   end
 
   # Expecting an array of markers in the following JSON format:
-  #  {"uri"=>nil, 
-  #   "value"=>"CYB", 
-  #   "defined_by"=>nil, 
+  #  {"uri"=>nil,
+  #   "value"=>"CYB",
+  #   "defined_by"=>nil,
   #   "definition"=>"mitochondrial cytocrhome B"}
   def get_markers(project_id)
     uri = URI("#{FIMS_ROOT_URL}#{FIMS_FASTA_MARKER_PATH}".sub('%{project_id}', project_id.to_s))
@@ -84,33 +99,33 @@ class Geome
   #expeditions = get_expeditions
   #markers = get_markers(PROJECT_ID)
   def download
-    projects = (1..30).map do |project_id| 
+    projects = (24..25).map do |project_id|
       expeditions = get_expeditions(project_id)
       project = { projectId: project_id }
-  
+
       if expeditions.is_a?(Array) && expeditions.length > 0 && expeditions[0]['project'].is_a?(Hash)
         project = expeditions[0]['project']
         project_json = {
           projectCode: project['projectCode'] || '',
           projectTitle: project['projectTitle'] || ''
         }
-    
+
         markers = get_markers(project_id)
-        project[:markers] = markers
-    
+        project[:markers] = markers.nil? ? [] : markers
+
         project[:expeditions] = expeditions.map do |expedition|
           {
-            expeditionId: expedition['expeditionId'] || '', 
-            expeditionCode: expedition['expeditionCode'] || '', 
-            expeditionTitle: expedition['expeditionTitle'] || '', 
+            expeditionId: expedition['expeditionId'] || '',
+            expeditionCode: expedition['expeditionCode'] || '',
+            expeditionTitle: expedition['expeditionTitle'] || '',
             ts: expedition['ts'] || Time.now.to_s,
             user: {
-              userId: expedition['userId'] || '', 
-              username: expedition['username'] || '', 
+              userId: expedition['userId'] || '',
+              username: expedition['username'] || '',
               projectAdmin: expedition['projectAdmin'] || 'false'
-            }, 
-            expeditionBcid: expedition['expeditionBcid'] || '', 
-            entityBcids: expedition['entityBcids'] || '', 
+            },
+            expeditionBcid: expedition['expeditionBcid'] || '',
+            entityBcids: expedition['entityBcids'] || '',
             public: expedition['public'] || 'true'
           }
         end
@@ -130,7 +145,7 @@ class Geome
   def download_to_file
     dir = "#{Dir.pwd}/tmp"
     Dir.mkdir(dir) unless File.exists?(dir)
-    File.open("#{dir}/output.json", 'w') do |file| 
+    File.open("#{dir}/output.json", 'w') do |file|
       file.write(JSON.pretty_generate(download))
     end
   end
