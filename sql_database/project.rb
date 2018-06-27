@@ -61,6 +61,7 @@ class Project
             source_json: marker.to_json
           }.merge(marker))
         end
+
         project_id
       else
         nil

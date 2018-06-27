@@ -17,7 +17,10 @@ class Geome
     [:projectId, :projectCode]
   end
   def get_expedition_identifiers
-    [:expeditionId, :expeditionCode]
+    [:expeditionId, :expeditionCode, :expeditionBcid, :entityBcids]
+  end
+  def get_author_identifiers
+    [:userId]
   end
 
   # JSON fields to skip when inserting source_json
@@ -102,7 +105,7 @@ class Geome
   #expeditions = get_expeditions
   #markers = get_markers(PROJECT_ID)
   def download
-    projects = (24..25).map do |project_id|
+    projects = (1..30).map do |project_id|
       expeditions = get_expeditions(project_id)
       project = { projectId: project_id }
 

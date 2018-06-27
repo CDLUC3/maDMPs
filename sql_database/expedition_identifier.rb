@@ -1,18 +1,18 @@
-class ProjectIdentifier
+class ExpeditionIdentifier
   def initialize(hash)
     @source_id = params[:source_id]
-    @project_id = params[:project_id]
+    @expedition_id = params[:expedition_id]
     @identifier = params[:identifier]
   end
 
   # -------------------------------------------------
   def self.find_all(conn, hash)
     ret = []
-    if !hash[:project_id].nil? && !hash[:source_id].nil?
+    if !hash[:expedition_id].nil? && !hash[:source_id].nil?
       recs = conn.query("SELECT * \
-                         FROM project_identifiers \
+                         FROM expedition_identifiers \
                          WHERE source_id = #{hash[:source_id]} \
-                         AND project_id = #{hash[:project_id]}")
+                         AND expedition_id = #{hash[:expedition_id]}")
       recs.each do |rec|
         ret << object_from_hash(self.class, rec)
       end
@@ -22,16 +22,16 @@ class ProjectIdentifier
 
   # -------------------------------------------------
   def self.find(conn, hash)
-    if hash[:project_id].nil?
+    if hash[:expedition_id].nil?
       sql = "SELECT * \
-             FROM project_identifiers \
+             FROM expedition_identifiers \
              WHERE source_id = #{hash[:source_id]} \
-             AND identifier = '#{hash[:identifier]}'"
+             AND expedition_id = '#{hash[:identifier]}'"
     else
       sql = "SELECT * \
-             FROM project_identifiers \
+             FROM expedition_identifiers \
              WHERE source_id = #{hash[:source_id]} \
-             AND project_id = #{hash[:project_id]} \
+             AND expedition_id = #{hash[:expedition_id]} \
              AND identifier = '#{hash[:identifier]}'"
     end
     object_from_hash(self.class, conn.query(sql).first)
@@ -40,10 +40,10 @@ class ProjectIdentifier
   # -------------------------------------------------
   def self.create!(conn, hash)
     if conn.respond_to?(:query) && valid?(hash)
-      stmt = conn.prepare("INSERT INTO project_identifiers \
-                            (source_id, project_id, identifier) \
+      stmt = conn.prepare("INSERT INTO expedition_identifiers \
+                            (source_id, expedition_id, identifier) \
                            VALUES (?, ?, ?)")
-      stmt.execute(hash[:source_id], hash[:project_id], hash[:identifier])
+      stmt.execute(hash[:source_id], hash[:expedition_id], hash[:identifier])
       find(conn, hash)
     else
       nil
@@ -54,8 +54,8 @@ class ProjectIdentifier
   def id
     @id
   end
-  def project_id
-    @project_id
+  def expedition_id
+    @expedition_id
   end
   def source_id
     @source_id
@@ -63,7 +63,7 @@ class ProjectIdentifier
 
 private
   def self.valid?(hash)
-    !hash[:project_id].nil? && !hash[:source_id].nil? &&
+    !hash[:expedition_id].nil? && !hash[:source_id].nil? &&
     !hash[:identifier].nil? && hash[:identifier] != ''
   end
 end

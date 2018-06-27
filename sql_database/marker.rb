@@ -42,9 +42,6 @@ class Marker
 
   # -------------------------------------------------
   def self.create!(conn, hash)
-
-puts "GOT: #{hash.inspect}"
-
     if conn.respond_to?(:query) && valid?(hash)
       stmt = conn.prepare(
         "INSERT INTO markers \
@@ -52,7 +49,7 @@ puts "GOT: #{hash.inspect}"
         VALUES (?, ?, ?, ?, ?, ?, ?)")
       stmt.execute(hash[:source_id], hash[:source_json], hash[:project_id],
                    hash['value'], hash['uri'], hash['defined_by'], hash['definition'])
-      find(conn, hash)
+      conn.last_id
     else
       nil
     end
