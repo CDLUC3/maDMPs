@@ -25,6 +25,17 @@ CREATE TABLE project_identifiers(
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
+CREATE TABLE markers(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  source_json JSON,
+  project_id INTEGER NOT NULL,
+  value VARCHAR(255) NOT NULL,
+  uri VARCHAR(255),
+  defined_by VARCHAR(255),
+  definition TEXT,
+  PRIMARY KEY (id)
+);
 CREATE TABLE expeditions(
   id INTEGER NOT NULL AUTO_INCREMENT,
   title VARCHAR(255),

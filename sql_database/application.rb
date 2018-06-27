@@ -1,8 +1,6 @@
 require 'mysql2'
-require_relative './project'
-
-db = Mysql2::Client.new(host: "localhost", username: "root", database: 'maDMPs')
-sources = db.query('SELECT * FROM sources')
+require_relative 'source'
+require_relative 'project'
 
 # --------------------------------------------------------------
 extract_obj_json = Proc.new{ |obj, exclusions| obj.select{ |k,v| !exclusions.include?(k) }.to_json }
@@ -34,77 +32,50 @@ process_expedition = Proc.new do |downloader, source, expedition|
 end
 
 # --------------------------------------------------------------
-process_project = Proc.new do |downloader, source, project|
-  ids = identifiers_to_array.call(downloader.send(:get_project_identifiers), project)
-  ps = db.prepare(
-    "SELECT projects.id \
-     FROM projects \
-     LEFT OUTER JOIN project_identifiers ON projects.id = project_identifiers.project_id \
-     WHERE (projects.title = ? AND projects.source_id = ?)")
+require_relative 'helpers'
 
-  # Insert the project record if it does not exist
-  prj = ps.execute(project['projectTitle'], source['id'])
-  if prj.count <= 0
-    ins_p = db.prepare(
-      "INSERT INTO projects (title, source_id, source_json) VALUES (?, ?, ?)")
-    ins_p.execute(project['projectTitle'], source['id'], extract_obj_json.call(project, downloader.send(:get_project_exclusions)))
-    prj = ps.execute(project['projectTitle'], source['id']).first
-  else
-    prj = prj.first
-  end
+db = Mysql2::Client.new(host: "localhost", username: "root", database: 'maDMPs')
+sources = Source.all(db)
 
-  # insert project identifiers
-  ids.each do |id|
-    pids = db.prepare(
-      "SELECT id FROM project_identifiers WHERE identifier = ? AND project_id = ?"
-    )
-    if pids.execute(id, prj['id']).count <= 0
-      ins_pid = db.prepare(
-        "INSERT INTO project_identifiers (source_id, project_id, identifier) VALUES (?, ?, ?)"
-      )
-      ins_pid.execute(source['id'], prj['id'], id)
-    end
-  end
-
-  # Process expeditions
-  unless project[:expeditions].nil?
-    project[:expeditions].each do |expedition|
-      exp = process_expedition.call(downloader, source, expedition)
-      if exp.present?
-        ins_e = db.prepare("INSERT INTO project_expeditions (project_id, expedition_id, source_id) VALLUES (?, ?, ?)")
-        ins_e.execute(prj['id'], exp['id'], source['id'])
-      end
-    end
-  end
-end
-
-# --------------------------------------------------------------
 if sources.count <= 0
   puts "You do not have any sources defined!"
 else
   sources.each do |source|
-    if source['directory']
-      path = File.expand_path("..", Dir.pwd)
-      path += "/#{source['directory']}"
-      Dir["#{path}/*.rb"].each {|file| require file }
+    if !source.downloader.nil?
+      puts "Downloading latest metadata from #{source.name}"
+      json = source.downloader.send('download')
 
-      puts "Downloading data from #{source['name'].capitalize}"
-      clazz = Object.const_get("#{source['name'].capitalize}")
-      obj = clazz.new
-      if obj.respond_to?('download')
-        json = obj.send('download')
+      # Exclusion lists are meant to truncate incoming JSON structures
+      # so that only the info relevant to the current object is included
+      # in the source_json stored in the table (e.g. projects.source_json
+      # does not store all of its expeditions JSON. That info is instead
+      # stored in expeditions.source_json)
+      project_json_exclusions = source.downloader.send(:get_project_exclusions)
 
-        if json[:projects].length > 0
-          json[:projects].each do |project_json|
-            project = Project.new({ conn: db, source: source, json: project_json })
-            project.save! if project.respond_to?(:save) && project.valid? 
+      # Identifiers are the unique keys the source uses to identify a project
+      project_identifiers = source.downloader.send(:get_project_identifiers)
 
-            #process_project.call(obj, source, project)
+      if json[:projects].length > 0
+        json[:projects].each do |project_json|
+          hash = {
+            source_id: source.id,
+            title: project_json['projectTitle'],
+            identifiers: collect_identifiers(project_json, project_identifiers),
+            markers: project_json[:markers] || [],
+            expeditions: [],
+            source_json: prepare_json(project_json, project_json_exclusions)
+          }
+          # Attempt to find the project. If it does not exist create it
+          puts "  Processing project: #{hash[:title]}"
+          project = Project.find(db, hash)
+          if project.nil?
+            project_id = Project.create!(db, hash)
+            project = Project.find(db, { id: project_id })
           end
         end
       end
     else
-      puts "Skipping #{source['name']} because its downloader application is undefined or missing."
+      puts "Skipping #{source.name} because its downloader application is undefined or missing."
     end
   end
 end

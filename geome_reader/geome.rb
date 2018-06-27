@@ -22,7 +22,10 @@ class Geome
 
   # JSON fields to skip when inserting source_json
   def get_project_exclusions
-    [:expeditions]
+    [:expeditions, :markers]
+  end
+  def get_marker_exclusions
+    []
   end
   def get_expedition_exclusions
     [:user]
@@ -111,7 +114,7 @@ class Geome
         }
 
         markers = get_markers(project_id)
-        project[:markers] = markers.nil? ? [] : markers
+        project[:markers] = markers.nil? ? [] : markers.is_a?(Array) ? markers : [markers]
 
         project[:expeditions] = expeditions.map do |expedition|
           {
