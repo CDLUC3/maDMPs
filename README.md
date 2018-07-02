@@ -53,6 +53,7 @@ JSON output:
           "name": "Dr. Funder Person",
           "identifiers": ["http://link.to.an/user/landing/page"],
           "role": "Program Manager"
+        }
       }]
       
       "expeditions": [
