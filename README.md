@@ -13,10 +13,11 @@ JSON output:
 {
   "projects": [
     {
-      "projectId": "99999", 
-      "projectCode": "ABCD", 
-      "projectTitle": "Sample Project",
-    
+      "identifiers": ["99999", "ABCD"],
+      "types": ["Creative Work", "http://url.to.my/controlled/vocabulary/page"],
+      "title": "Sample Project",
+      "description": "This is a description of our important project",
+      
       "markers": [
         {
           "uri": "", 
@@ -31,6 +32,29 @@ JSON output:
           "definition": "species ABC"
         }
       ],
+      
+      "contributors": [
+        {
+          "name": "John Doe",
+          "email": "john.doe@nowhere.org",
+          "role": "Principal Investigator"
+        }
+      ],
+      
+      "awards": [
+        "name": "ABCD-1234 Semi-Annual for exceptional research topics",
+        "identifiers": ["ABCD-1234", "http://url.to.my/awards/landing/page"],
+        "org": {
+          "orgTypes": ["Organization"],
+          "orgIdentifiers": ["http://link.to.an/org/page"],
+          "orgName": "Funder Institution"
+        },
+        "offered_by": {
+          "name": "Dr. Funder Person",
+          "identifiers": ["http://link.to.an/user/landing/page"],
+          "role": "Program Manager"
+        }
+      ]
       
       "expeditions": [
         {
