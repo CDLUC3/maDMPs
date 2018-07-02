@@ -41,7 +41,7 @@ JSON output:
         }
       ],
       
-      "awards": [
+      "awards": [{
         "name": "ABCD-1234 Semi-Annual for exceptional research topics",
         "identifiers": ["ABCD-1234", "http://url.to.my/awards/landing/page"],
         "org": {
@@ -53,8 +53,7 @@ JSON output:
           "name": "Dr. Funder Person",
           "identifiers": ["http://link.to.an/user/landing/page"],
           "role": "Program Manager"
-        }
-      ]
+      }]
       
       "expeditions": [
         {
