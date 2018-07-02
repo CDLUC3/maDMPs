@@ -1,20 +1,16 @@
-class ProjectAuthor
-  enum role: [:principal, :coprincipal, :researcher]
-  
+class ProjectType
   def initialize(hash)
     @source_id = params[:source_id]
     @project_id = params[:project_id]
-    @author_id = params[:author_id]
-    @role = params[:role]
   end
 
   # -------------------------------------------------
   def self.find(conn, hash)
     if valid?(hash)
       sql = "SELECT * \
-             FROM project_authors \
+             FROM project_types \
              WHERE source_id = #{hash[:source_id]} \
-             AND author_id = #{hash[:author_id]} \
+             AND type = #{hash[:project_type]} \
              AND project_id = #{hash[:project_id]}"
     end
     object_from_hash(self.class, conn.query(sql).first)
@@ -23,10 +19,10 @@ class ProjectAuthor
   # -------------------------------------------------
   def self.create!(conn, hash)
     if conn.respond_to?(:query) && valid?(hash)
-      stmt = conn.prepare("INSERT INTO project_authors \
-                            (source_id, author_id, project_id, role) \
-                           VALUES (?, ?, ?, ?)")
-      stmt.execute(hash[:source_id], hash[:author_id], hash[:project_id], hash[:role] || :researcher)
+      stmt = conn.prepare("INSERT INTO project_types \
+                            (source_id, project_id, type) \
+                           VALUES (?, ?, ?)")
+      stmt.execute(hash[:source_id], hash[:project_id], hash[:project_type])
       find(conn, hash)
     else
       nil
@@ -46,6 +42,6 @@ class ProjectAuthor
 
 private
   def self.valid?(hash)
-    !hash[:author_id].nil? && !hash[:source_id].nil? && !hash[:project_id].nil?
+    !hash[:project_type].nil? && !hash[:source_id].nil? && !hash[:project_id].nil?
   end
 end

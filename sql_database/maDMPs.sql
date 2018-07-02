@@ -9,9 +9,34 @@ CREATE TABLE sources(
   created_at TIMESTAMP,
   PRIMARY KEY (id)
 );
+CREATE TABLE orgs(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  name VARCHAR(255),
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE org_types(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  org_id INTEGER NOT NULL,
+  type VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE org_identifiers(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  org_id INTEGER NOT NULL,
+  identifier VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
 CREATE TABLE projects(
   id INTEGER NOT NULL AUTO_INCREMENT,
   title VARCHAR(255),
+  description TEXT,
+  funder_id INTEGER,
   source_id INTEGER NOT NULL,
   source_json JSON,
   created_at TIMESTAMP NOT NULL,
@@ -34,6 +59,49 @@ CREATE TABLE markers(
   uri VARCHAR(255),
   defined_by VARCHAR(255),
   definition TEXT,
+  PRIMARY KEY (id)
+);
+CREATE TABLE awards(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  description TEXT,
+  title VARCHAR(255),
+  offered_by INTEGER
+  source_id INTEGER NOT NULL,
+  source_json JSON,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE award_types(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  award_id INTEGER NOT NULL,
+  type VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE award_identifiers(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  award_id INTEGER NOT NULL,
+  identifier VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE project_awards(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  project_id INTEGER NOT NULL,
+  award_id INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+# FUNDER AWARDS 
+CREATE TABLE org_awards(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  project_id INTEGER NOT NULL,
+  org_id INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
 CREATE TABLE expeditions(
@@ -83,6 +151,15 @@ CREATE TABLE project_authors(
   source_id INTEGER NOT NULL,
   project_id INTEGER NOT NULL,
   author_id INTEGER NOT NULL,
+  role INTEGER NOT NULL,                    # 0 = Principal Investigator, 1 = Co-principal Investigator, 2 = Researcher
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE project_types(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  project_id INTEGER NOT NULL,
+  type VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );

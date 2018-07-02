@@ -107,31 +107,36 @@ class Geome
   def download
     projects = (1..30).map do |project_id|
       expeditions = get_expeditions(project_id)
-      project = { projectId: project_id }
-
+      project, proj_ids = {}, [project_id]
+      
       if expeditions.is_a?(Array) && expeditions.length > 0 && expeditions[0]['project'].is_a?(Hash)
         project = expeditions[0]['project']
+        proj_ids << project['projectCode'] unless project['projectCode'].nil?
+        
         project_json = {
-          projectCode: project['projectCode'] || '',
-          projectTitle: project['projectTitle'] || ''
+          identifiers: proj_ids,
+          title: project['projectTitle'] || ''
         }
 
         markers = get_markers(project_id)
         project[:markers] = markers.nil? ? [] : markers.is_a?(Array) ? markers : [markers]
 
         project[:expeditions] = expeditions.map do |expedition|
+          exp_ids = []
+          exp_ids << expedition['expeditionId'] unless expedition['expeditionId'].nil?
+          exp_ids << expedition['expeditionCode'] unless expedition['expeditionCode'].nil? || expedition['expeditionCode'] == ''
+          exp_ids << expedition['expeditionBcid'] unless expedition['expeditionBcid'].nil? || expedition['expeditionBcid'] == ''
+          exp_ids << expedition['entityBcids'] unless expedition['entityBcids'].nil? || expedition['entityBcids'] == ''
+          
           {
-            expeditionId: expedition['expeditionId'] || '',
-            expeditionCode: expedition['expeditionCode'] || '',
-            expeditionTitle: expedition['expeditionTitle'] || '',
-            ts: expedition['ts'] || Time.now.to_s,
+            identifiers: exp_ids,
+            title: expedition['expeditionTitle'] || '',
+            start_date: expedition['ts'] || Time.now.to_s,
             user: {
-              userId: expedition['userId'] || '',
-              username: expedition['username'] || '',
-              projectAdmin: expedition['projectAdmin'] || 'false'
+              identifiers: [expedition['userId']],
+              name: expedition['username'] || '',
+              role: expedition['projectAdmin'] || 'false'
             },
-            expeditionBcid: expedition['expeditionBcid'] || '',
-            entityBcids: expedition['entityBcids'] || '',
             public: expedition['public'] || 'true'
           }
         end
@@ -155,9 +160,7 @@ class Geome
       file.write(JSON.pretty_generate(download))
     end
   end
-
-  #puts markers
-
-  #res = query_metadata([431], 'polynesia')
-  #puts res
 end
+
+app = Geome.new
+app.download_to_file
