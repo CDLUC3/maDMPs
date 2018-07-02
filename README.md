@@ -41,20 +41,22 @@ JSON output:
         }
       ],
       
-      "awards": [{
-        "name": "ABCD-1234 Semi-Annual for exceptional research topics",
-        "identifiers": ["ABCD-1234", "http://url.to.my/awards/landing/page"],
-        "org": {
-          "types": ["Organization"],
-          "identifiers": ["http://link.to.an/org/page"],
-          "name": "Funder Institution"
-        },
-        "offered_by": {
-          "name": "Dr. Funder Person",
-          "identifiers": ["http://link.to.an/user/landing/page"],
-          "role": "Program Manager"
+      "awards": [
+        {
+          "name": "ABCD-1234 Semi-Annual for exceptional research topics",
+          "identifiers": ["ABCD-1234", "http://url.to.my/awards/landing/page"],
+          "org": {
+            "types": ["Organization"],
+            "identifiers": ["http://link.to.an/org/page"],
+            "name": "Funder Institution"
+          },
+          "offered_by": {
+            "name": "Dr. Funder Person",
+            "identifiers": ["http://link.to.an/user/landing/page"],
+            "role": "Program Manager"
+          }
         }
-      }]
+      ],
       
       "expeditions": [
         {
