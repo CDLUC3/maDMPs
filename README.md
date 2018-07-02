@@ -45,9 +45,9 @@ JSON output:
         "name": "ABCD-1234 Semi-Annual for exceptional research topics",
         "identifiers": ["ABCD-1234", "http://url.to.my/awards/landing/page"],
         "org": {
-          "orgTypes": ["Organization"],
-          "orgIdentifiers": ["http://link.to.an/org/page"],
-          "orgName": "Funder Institution"
+          "types": ["Organization"],
+          "identifiers": ["http://link.to.an/org/page"],
+          "name": "Funder Institution"
         },
         "offered_by": {
           "name": "Dr. Funder Person",
@@ -58,31 +58,14 @@ JSON output:
       
       "expeditions": [
         {
-          "expeditionId": 123, 
-          "expeditionCode": "TEST 1", 
-          "expeditionTitle": "TEST 1 spreadsheet dataset", 
-          "ts": "2018-06-21 08:09:10",
+          "identifiers": ["12389", "TEST 1"], 
+          "title": "TEST 1 spreadsheet dataset", 
+          "start_date": "2018-06-21 08:09:10",
           "user": {
-            "userId": "0", 
-            "username": "demo", 
-            "projectAdmin": "false"
+            "identifiers": ["0"], 
+            "name": "demo", 
+            "role": "Co-principal Investigator"
           }, 
-          "expeditionBcid": "", 
-          "entityBcids": "", 
-          "public": "true"
-        },
-        {
-          "expeditionId": 124, 
-          "expeditionCode": "TEST 2", 
-          "expeditionTitle": "TEST 2 spreadsheet dataset", 
-          "ts": "2018-06-22 11:13:14",
-          "user": {
-            "userId": "0", 
-            "username": "demo", 
-            "projectAdmin": "false"
-          }, 
-          "expeditionBcid": "", 
-          "entityBcids": "", 
           "public": "true"
         }
       ]
