@@ -6,7 +6,6 @@ require 'net/http'
 
 class Geome
   # CONSTANTS
-  #PROJECT_ID = 25
   FIMS_ROOT_URL = "https://www.geome-db.org/rest/"
   FIMS_EXPEDITION_PATH = "projects/%{project_id}/expeditions"
   FIMS_QUERY_PATH = "projects/query/fastq"
@@ -105,15 +104,15 @@ class Geome
   #expeditions = get_expeditions
   #markers = get_markers(PROJECT_ID)
   def download
-    projects = (1..30).map do |project_id|
+    projects = (1..51).map do |project_id|
       expeditions = get_expeditions(project_id)
       project, proj_ids = {}, [project_id]
-      
+
       if expeditions.is_a?(Array) && expeditions.length > 0 && expeditions[0]['project'].is_a?(Hash)
         project = expeditions[0]['project']
         proj_ids << project['projectCode'] unless project['projectCode'].nil?
-        
-        project_json = {
+
+        project = {
           identifiers: proj_ids,
           title: project['projectTitle'] || ''
         }
@@ -127,16 +126,18 @@ class Geome
           exp_ids << expedition['expeditionCode'] unless expedition['expeditionCode'].nil? || expedition['expeditionCode'] == ''
           exp_ids << expedition['expeditionBcid'] unless expedition['expeditionBcid'].nil? || expedition['expeditionBcid'] == ''
           exp_ids << expedition['entityBcids'] unless expedition['entityBcids'].nil? || expedition['entityBcids'] == ''
-          
+
+          user_hash = {
+            identifiers: [expedition['userId']],
+            name: expedition['username'] || '',
+            role: expedition['projectAdmin'] || 'false'
+          }
+
           {
             identifiers: exp_ids,
             title: expedition['expeditionTitle'] || '',
             start_date: expedition['ts'] || Time.now.to_s,
-            user: {
-              identifiers: [expedition['userId']],
-              name: expedition['username'] || '',
-              role: expedition['projectAdmin'] || 'false'
-            },
+            user: (user_hash['identifiers'].nil? && user_hash['name'] == '' ? {} : user_hash),
             public: expedition['public'] || 'true'
           }
         end

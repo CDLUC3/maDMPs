@@ -1,4 +1,4 @@
-# This is a utility script to query the BCO-DMO metadata sent via email 
+# This is a utility script to query the BCO-DMO metadata sent via email
 require 'json'
 
 class BcoDmo
@@ -8,24 +8,7 @@ class BcoDmo
   def get_project_identifiers
     [:projectId, :projectAlternateName]
   end
-  def get_expedition_identifiers
-    [:expeditionId, :expeditionCode, :expeditionBcid, :entityBcids]
-  end
-  def get_author_identifiers
-    [:userId]
-  end
-
-  # JSON fields to skip when inserting source_json
-  def get_project_exclusions
-    [:expeditions, :markers]
-  end
-  def get_marker_exclusions
-    []
-  end
-  def get_expedition_exclusions
-    [:user]
-  end
-
+  
   def get_metadata
     file = File.read("#{File.expand_path("..", Dir.pwd)}/bco_dmo/#{INPUT}")
     if file
@@ -54,28 +37,28 @@ class BcoDmo
       proj_types << project['additionalType'] unless project['additionalType'].nil?
       proj_ids << project['@id'] unless project['@id'].nil?
       proj_ids << project['alternateName'] unless project['alternateName'].nil?
-      
+
       contributors = []
       unless project['contributor'].nil?
         project['contributor'].each do |contrib_hash|
-          contributors << { 
-            name: contrib_hash['contributor']['name'], 
-            identifiers: [contrib_hash['contributor']['@id']], 
-            role: contrib_hash['roleName'], 
-            org: { name: contrib_hash['odo:forOrganization']['name']} 
+          contributors << {
+            name: contrib_hash['contributor']['name'],
+            identifiers: [contrib_hash['contributor']['@id']],
+            role: contrib_hash['roleName'],
+            org: { name: contrib_hash['odo:forOrganization']['name']}
           }
         end
       end
-      
+
       awards = []
-      
+
       unless project['funder'].nil? || project['funder'][project['funder'].keys.first]['makesOffer'].nil?
-        org_hash = { 
-          types: [project['funder'][project['funder'].keys.first]['@type']], 
+        org_hash = {
+          types: [project['funder'][project['funder'].keys.first]['@type']],
           identifiers: [project['funder'][project['funder'].keys.first]['@id']],
           name: project['funder'][project['funder'].keys.first]['name']
         }
-        
+
         project['funder'][project['funder'].keys.first]['makesOffer'].each do |offer|
           award_ids = [offer['@id'], offer['name'], offer['sameAs']]
           awards << {
@@ -86,18 +69,18 @@ class BcoDmo
           }
         end
       end
-      
+
       documents = []
       unless project['odo:hasDataManagementPlan'].nil?
         project['odo:hasDataManagementPlan'].each do |dmp|
-          documents << { 
-            types: [dmp['encodingFormat']] || '', 
+          documents << {
+            types: [dmp['encodingFormat']] || '',
             description: dmp['description'] || '',
             uri: dmp['url'] || ''
           }
         end
       end
-      
+
       projects << {
         identifiers: proj_ids,
         types: proj_types,
