@@ -5,9 +5,9 @@ require 'nokogiri'
 #   http://bnhmipt.berkeley.edu/ipt/resource?r=biocode
 
 class Biocode
-
   def load_eml
-    doc = File.open("#{Dir.pwd}/tmp/biocode.xml") { |f| Nokogiri::XML(f) }
+    dir = "#{File.expand_path("..", Dir.pwd)}/biocode/tmp/biocode.xml"
+    doc = File.open(dir) { |f| Nokogiri::XML(f) }
   end
 
   #expeditions = get_expeditions
@@ -44,7 +44,7 @@ class Biocode
   end
 
   def download_to_file
-    dir = "#{Dir.pwd}/tmp"
+    dir = "#{File.expand_path("..", Dir.pwd)}/biocode/tmp"
     Dir.mkdir(dir) unless File.exists?(dir)
     File.open("#{dir}/output.json", 'w') do |file|
       file.write(JSON.pretty_generate(download))
