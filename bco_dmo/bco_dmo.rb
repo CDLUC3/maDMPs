@@ -4,7 +4,7 @@ require 'json'
 class BcoDmo
   # CONSTANTS
   INPUT = 'tmp/bco-dmo.json'
-
+  
   def get_project_identifiers
     [:projectId, :projectAlternateName]
   end
@@ -27,7 +27,7 @@ class BcoDmo
   end
 
   def get_metadata
-    file = File.read("#{Dir.pwd}/#{INPUT}")
+    file = File.read("#{File.expand_path("..", Dir.pwd)}/bco_dmo/#{INPUT}")
     if file
       begin
         json = JSON.parse(file)
@@ -114,7 +114,7 @@ class BcoDmo
 
   # Converts the json received from BCO-DMO into our generic json format
   def download_to_file
-    dir = "#{Dir.pwd}/tmp"
+    dir = "#{File.expand_path("..", Dir.pwd)}/bco_dmo/tmp"
     Dir.mkdir(dir) unless File.exists?(dir)
     File.open("#{dir}/output.json", 'w') do |file|
       file.write(JSON.pretty_generate(download))
@@ -122,5 +122,5 @@ class BcoDmo
   end
 end
 
-app = BcoDmo.new
-app.download_to_file
+#app = BcoDmo.new
+#app.download_to_file

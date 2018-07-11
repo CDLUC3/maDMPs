@@ -5,7 +5,7 @@ class Source
     @conn = params[:conn]
     @id = params[:id]
     @name = params[:name]
-    @downloader = init_downloader(params[:downloader_dir])
+    @downloader = init_downloader(params[:directory])
   end
 
   def self.all(conn)
@@ -16,7 +16,7 @@ class Source
           conn: conn,
           id: record['id'],
           name: record['name'],
-          downloader_dir: record['directory']
+          directory: record['directory']
         })
       end
     else
@@ -48,7 +48,8 @@ class Source
 
     # Instantiate the source downloaded
     begin
-      clazz = Object.const_get("#{@name.gsub(/\s/, '').capitalize}")
+      clazz_name = @name.gsub(/\s/, '').split(/_|\-/).to_a.reduce(''){ |out, part| out + part.capitalize } #{ |out, part| part.capitalize }
+      clazz = Object.const_get(clazz_name)
       obj = clazz.new
       (obj.respond_to?(:download) ? obj : nil)
     rescue NameError => ne

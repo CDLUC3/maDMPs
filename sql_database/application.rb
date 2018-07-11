@@ -14,6 +14,8 @@ else
   sources.each do |source|
     if !source.downloader.nil?
       puts "Downloading latest metadata from #{source.name}"
+
+if source.name == 'BCO-DMO'
       json = source.downloader.send('download')
 
       # Exclusion lists are meant to truncate incoming JSON structures
@@ -31,19 +33,14 @@ else
 
       if json[:projects].length > 0
         json[:projects].each do |project_json|
-          hash = {
-            source_id: source.id,
-            title: project_json['projectTitle'],
-            identifiers: collect_identifiers(project_json, project_identifiers),
-            markers: project_json[:markers] || [],
-            expeditions: [],
-            source_json: prepare_json(project_json, project_json_exclusions)
-          }
+          project_hash = prepare_json(project_json, project_json_exclusions)
+          project_hash[:source_id] = source.id
+
           # Attempt to find the project. If it does not exist create it
-          puts "  Processing project: #{hash[:title]}"
-          project = Project.find(db, hash)
+          puts "  Processing project: #{project_hash[:title]}"
+          project = Project.find(db, project_hash)
           if project.nil?
-            project_id = Project.create!(db, hash)
+            project_id = Project.create!(db, project_hash)
           else
             project_id = project.id
           end
@@ -94,6 +91,9 @@ else
     else
       puts "Skipping #{source.name} because its downloader application is undefined or missing."
     end
+
+end
+
   end
 end
 db.close

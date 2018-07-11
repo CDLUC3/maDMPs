@@ -154,7 +154,7 @@ class Geome
   end
 
   def download_to_file
-    dir = "#{Dir.pwd}/tmp"
+    dir = "#{File.expand_path("..", Dir.pwd)}/geome/tmp"
     Dir.mkdir(dir) unless File.exists?(dir)
     File.open("#{dir}/output.json", 'w') do |file|
       file.write(JSON.pretty_generate(download))
@@ -162,5 +162,5 @@ class Geome
   end
 end
 
-app = Geome.new
-app.download_to_file
+#app = Geome.new
+#app.download_to_file

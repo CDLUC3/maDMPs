@@ -8,7 +8,7 @@ end
 
 # -----------------------------------------------------------
 def prepare_json(json, exclusion_list)
-  json.select{ |k,v| !exclusion_list.include?(k) }.to_json
+  json.select{ |k,v| !exclusion_list.include?(k) }
 end
 
 # -----------------------------------------------------------

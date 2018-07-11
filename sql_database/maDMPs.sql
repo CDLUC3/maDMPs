@@ -2,7 +2,7 @@
 USE maDMPs;
 
 CREATE TABLE sources(
-  id INTEGER,
+  id INTEGER NOT NULL AUTO_INCREMENT,
   name VARCHAR(255),
   directory VARCHAR(255),
   last_download DATETIME,
@@ -38,22 +38,44 @@ CREATE TABLE projects(
   description TEXT,
   funder_id INTEGER,
   source_id INTEGER NOT NULL,
-  source_json JSON,
+  source_json TEXT,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE identifiers(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  identifier VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
 CREATE TABLE project_identifiers(
   id INTEGER NOT NULL AUTO_INCREMENT,
   source_id INTEGER NOT NULL,
+  identifier_id INTEGER NOT NULL,
   project_id INTEGER NOT NULL,
-  identifier VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE types(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  type VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE project_types(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  type_id INTEGER NOT NULL,
+  project_id INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
 CREATE TABLE markers(
   id INTEGER NOT NULL AUTO_INCREMENT,
   source_id INTEGER NOT NULL,
-  source_json JSON,
+  source_json TEXT,
   project_id INTEGER NOT NULL,
   value VARCHAR(255) NOT NULL,
   uri VARCHAR(255),
@@ -65,9 +87,9 @@ CREATE TABLE awards(
   id INTEGER NOT NULL AUTO_INCREMENT,
   description TEXT,
   title VARCHAR(255),
-  offered_by INTEGER
+  offered_by INTEGER,
   source_id INTEGER NOT NULL,
-  source_json JSON,
+  source_json TEXT,
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
@@ -111,7 +133,7 @@ CREATE TABLE expeditions(
   public BOOLEAN NOT NULL DEFAULT 0,
   created_at TIMESTAMP,
   source_id INTEGER NOT NULL,
-  source_json JSON,
+  source_json TEXT,
   PRIMARY KEY (id)
 );
 CREATE TABLE project_expeditions(
@@ -172,6 +194,6 @@ CREATE TABLE expedition_authors(
   PRIMARY KEY (id)
 );
 
-INSERT INTO sources (id, name, directory, output)
-VALUES (1, 'GeOMe', 'geome_reader', 'geome_reader/output.json');
-INSERT INTO sources (id, name) VALUES (2, 'BCO-DMO');
+INSERT INTO sources (name, directory) VALUES ('GeOMe', 'geome_reader');
+INSERT INTO sources (name, directory) VALUES ('BCO-DMO', 'bco_dmo');
+INSERT INTO sources (name, directory) VALUES ('Biocode', 'bicode');
