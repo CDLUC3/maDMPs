@@ -8,7 +8,7 @@ else
     if !source.downloader.nil?
       puts "Downloading latest metadata from #{source.name}"
 
-if source.name == 'Biocode' #'BCO-DMO'
+if source.name == 'BCO-DMO' #'Biocode'
       json = source.downloader.send('download')
 
       if json[:projects].length > 0

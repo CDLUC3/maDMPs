@@ -33,7 +33,7 @@ CREATE TABLE expeditions(
 );
 CREATE TABLE identifiers(
   id INTEGER NOT NULL AUTO_INCREMENT,
-  identifier VARCHAR(255) NOT NULL,
+  value VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
@@ -75,7 +75,7 @@ CREATE TABLE sources(
 );
 CREATE TABLE types(
   id INTEGER NOT NULL AUTO_INCREMENT,
-  type VARCHAR(255) NOT NULL,
+  value VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
@@ -153,7 +153,7 @@ CREATE TABLE project_types(
   id INTEGER NOT NULL AUTO_INCREMENT,
   source_id INTEGER NOT NULL,
   project_id INTEGER NOT NULL,
-  type VARCHAR(255) NOT NULL,
+  type_id VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
