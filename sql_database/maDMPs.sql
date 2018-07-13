@@ -59,7 +59,9 @@ CREATE TABLE projects(
   id INTEGER NOT NULL AUTO_INCREMENT,
   title VARCHAR(255),
   description TEXT,
-  license TEXT NOT NULL,
+  license TEXT,
+  publication_date VARCHAR(50),
+  language VARCHAR(5),
   source_id INTEGER NOT NULL,
   source_json TEXT,
   created_at TIMESTAMP NOT NULL,
@@ -68,7 +70,6 @@ CREATE TABLE projects(
 CREATE TABLE sources(
   id INTEGER NOT NULL AUTO_INCREMENT,
   name VARCHAR(255),
-  directory VARCHAR(255),
   last_download DATETIME,
   created_at TIMESTAMP,
   PRIMARY KEY (id)
@@ -200,6 +201,6 @@ CREATE TABLE expedition_contributors(
   PRIMARY KEY (id)
 );
 
-INSERT INTO sources (name, directory) VALUES ('GeOMe', 'geome_reader');
-INSERT INTO sources (name, directory) VALUES ('BCO-DMO', 'bco_dmo');
-INSERT INTO sources (name, directory) VALUES ('Biocode', 'biocode');
+INSERT INTO sources (name) VALUES ('geome');
+INSERT INTO sources (name) VALUES ('bco_dmo');
+INSERT INTO sources (name) VALUES ('biocode');

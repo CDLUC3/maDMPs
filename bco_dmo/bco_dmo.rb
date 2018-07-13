@@ -3,26 +3,37 @@ require 'json'
 
 class BcoDmo
   # CONSTANTS
-  INPUT = 'tmp/bco-dmo.json'
-  
+  BASE_DIR = "#{ROOT}/bco_dmo/tmp"
+  SOURCE = "#{BASE_DIR}/bco_dmo.json"
+  OUTPUT = "#{BASE_DIR}/output.json"
+
+  def process
+    if !File.exists?(SOURCE)
+      puts "  SKIPPING: bco_dmo - You must retrieve the BCO-DMO json query (currently emailed) and place it into #{SOURCE}."
+    else
+      puts "  Converting raw BCO-DMO JSON in #{SOURCE} to a standard JSON format."
+      download
+    end
+  end
+
   def get_project_identifiers
     [:projectId, :projectAlternateName]
   end
-  
+
   def get_metadata
-    file = File.read("#{File.expand_path("..", Dir.pwd)}/bco_dmo/#{INPUT}")
+    file = File.read(SOURCE)
     if file
       begin
         json = JSON.parse(file)
         if json['result'].nil?
-          puts "Expected the JSON input to follow the BCO-DMO search results format. Expected the project results to be in json['result']!"
+          puts "    Expected the JSON input to follow the BCO-DMO search results format. Expected the project results to be in json['result']!"
+          nil
         else
-          results = json['result']
-          puts "Loaded BCO-DMO JSON file with #{results.length} projects"
-          results
+          json['result']
         end
       rescue Exception => e
-        puts "Invalid JSON found at #{INPUT}"
+        puts "    Invalid JSON found at #{SOURCE}"
+        nil
       end
     end
   end
@@ -98,8 +109,8 @@ class BcoDmo
   # Converts the json received from BCO-DMO into our generic json format
   def download_to_file
     dir = "#{File.expand_path("..", Dir.pwd)}/bco_dmo/tmp"
-    Dir.mkdir(dir) unless File.exists?(dir)
-    File.open("#{dir}/output.json", 'w') do |file|
+    Dir.mkdir(BASE_DIR) unless File.exists?(BASE_DIR)
+    File.open(OUTPUT, 'w') do |file|
       file.write(JSON.pretty_generate(download))
     end
   end

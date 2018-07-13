@@ -5,9 +5,21 @@ require 'nokogiri'
 #   http://bnhmipt.berkeley.edu/ipt/resource?r=biocode
 
 class Biocode
+  BASE_DIR = "#{ROOT}/biocode/tmp"
+  SOURCE = "#{BASE_DIR}/biocode.xml"
+  OUTPUT = "#{BASE_DIR}/output.json"
+
+  def process
+    if !File.exists?(SOURCE)
+      puts "  SKIPPING: biocode - You must manually download the Biocode EML file from http://bnhmipt.berkeley.edu/ipt/resource?r=biocode and place it into #{SOURCE}."
+    else
+      puts "  Converting raw Biocode EML in #{SOURCE} to a standard JSON format."
+      download
+    end
+  end
+
   def load_eml
-    dir = "#{File.expand_path("..", Dir.pwd)}/biocode/tmp/biocode.xml"
-    doc = File.open(dir) { |f| Nokogiri::XML(f) }
+    doc = File.open(SOURCE) { |f| Nokogiri::XML(f) }
   end
 
   #expeditions = get_expeditions
@@ -44,9 +56,8 @@ class Biocode
   end
 
   def download_to_file
-    dir = "#{File.expand_path("..", Dir.pwd)}/biocode/tmp"
-    Dir.mkdir(dir) unless File.exists?(dir)
-    File.open("#{dir}/output.json", 'w') do |file|
+    Dir.mkdir(BASE_DIR) unless File.exists?(BASE_DIR)
+    File.open(OUTPUT, 'w') do |file|
       file.write(JSON.pretty_generate(download))
     end
   end
