@@ -74,8 +74,8 @@ class BcoDmo
           award_ids = [offer['@id'], offer['name'], offer['sameAs']]
           awards << {
             org: org_hash,
-            name: offer['name'],
-            identifiers: award_ids,
+            title: offer['name'],
+            identifiers: award_ids.select{|a| a.present? },
             offered_by: { name: offer['offeredBy']['name'], identifiers: [offer['offeredBy']['@id']], role: offer['offeredBy']['additionalType']}
           }
         end
@@ -85,9 +85,9 @@ class BcoDmo
       unless project['odo:hasDataManagementPlan'].nil?
         project['odo:hasDataManagementPlan'].each do |dmp|
           documents << {
-            types: [dmp['encodingFormat']] || '',
-            description: dmp['description'] || '',
-            uri: dmp['url'] || ''
+            types: [dmp['description'], dmp['encodingFormat']] || [],
+            title: dmp['description'] || nil,
+            identifiers: [dmp['url']] || []
           }
         end
       end

@@ -8,6 +8,8 @@ class Org < ActiveRecord::Base
   has_many :types, through: :org_types
   has_many :contributors, through: :org_contributors
 
+  validates :name, presence: true
+
   def self.find_or_create_by_hash(hash)
     if hash.is_a?(Hash)
       # If the id was passed, get the Project otherwise search for it based on its identifiers
@@ -30,21 +32,24 @@ class Org < ActiveRecord::Base
 
   def self.create_by_hash!(hash)
     params = hash.select{ |k, v| ![:awards, :identifiers, :types].include?(k) }
-    org = Org.new(params)
 
-    # Add any new identifiers or attach existing ones
-    org.org_identifiers = Array(hash.fetch(:identifiers, [])).map do |identifier|
-      OrgIdentifier.new(source_id: hash[:source_id],
-                        identifier_id: Identifier.find_or_create_by(value: identifier).id)
-    end
+    if params[:name].present?
+      org = Org.new(params)
 
-    # Add any new types or attach existing ones
-    org.org_types = Array(hash.fetch(:types, [])).map do |type|
-      OrgType.new(source_id: hash[:source_id],
-                  type_id: Type.find_or_create_by(value: type).id)
+      # Add any new identifiers or attach existing ones
+      org.org_identifiers = Array(hash.fetch(:identifiers, [])).map do |identifier|
+        OrgIdentifier.new(source_id: hash[:source_id],
+                          identifier_id: Identifier.find_or_create_by(value: identifier).id) if identifier.present?
+      end
+
+      # Add any new types or attach existing ones
+      org.org_types = Array(hash.fetch(:types, [])).map do |type|
+        OrgType.new(source_id: hash[:source_id],
+                    type_id: Type.find_or_create_by(value: type).id) if type.present?
+      end
+      org.save!
+      org
     end
-    org.save!
-    org
   end
 
   def update_by_hash!(hash)

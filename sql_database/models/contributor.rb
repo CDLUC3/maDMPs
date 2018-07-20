@@ -1,13 +1,13 @@
-class Project < ActiveRecord::Base
+class Contributor < ActiveRecord::Base
   belongs_to :source
 
-  has_many :contributor_orgs
+  has_many :project_contributors
   has_many :contributor_identifiers
-  has_many :contributor_projects
+  has_many :org_contributors
 
+  has_many :orgs, through: :org_contributors
   has_many :identifiers, through: :contributor_identifiers
-  has_many :orgs, through: :contributor_orgs
-  has_many :projects, through: :contributor_projects
+  has_many :projects, through: :project_contributors
 
   def self.find_or_create_by_hash(hash)
     if hash.is_a?(Hash)
@@ -18,7 +18,7 @@ class Project < ActiveRecord::Base
         contributor = Contributor.includes(:identifiers).where(identifier: hash[:identifiers]).first
       end
 
-      contributor = Contributor.find_by(email: hash[:email]) unless contributor.present? || !hash[:email].present?
+      contributor = Contributor.find_by('name = ? OR email = ?', hash[:name], hash[:email]) unless contributor.present?
       if contributor.present?
         contributor.update_by_hash!(hash)
         contributor
@@ -31,44 +31,63 @@ class Project < ActiveRecord::Base
   end
 
   def self.create_by_hash!(hash)
-    params = hash.select{ |k, v| ![:awards, :identifiers, :types].include?(k) }
-    contributor = Contributor.new(params)
+    params = hash.select{ |k, v| ![:org, :role, :identifiers].include?(k) }
 
-    # Add any new identifiers or attach existing ones
-    contributor.contributor_identifiers = Array(hash.fetch(:identifiers, [])).map do |identifier|
-      ContributorIdentifier.new(source_id: hash[:source_id], identifier_id: Identifier.find_or_create_by(value: identifier).id)
+    if hash[:name].present? || hash[:email].present?
+      contributor = Contributor.new(params)
+
+      # Add any new identifiers or attach existing ones
+      contributor.contributor_identifiers = Array(hash.fetch(:identifiers, [])).map do |identifier|
+        ContributorIdentifier.new(source_id: hash[:source_id],
+                                  identifier_id: Identifier.find_or_create_by(value: identifier).id) if identifier.present?
+      end
+
+      # If there is an email add that as an identifier
+      if hash[:email].present?
+        ContributorIdentifier.new(source_id: hash[:source_id],
+                                  identifier_id: Identifier.find_or_create_by(value: hash[:email]).id)
+      end
+
+      # Add the Org if applicable
+      if hash[:org].present?
+        hash[:org][:source_id] = hash[:source_id]
+        org = Org.find_or_create_by_hash(hash[:org])
+        if org.present?
+          contributor.org_contributors << OrgContributor.new(source_id: hash[:source_id], org_id: org.id)
+        end
+      end
+      contributor.save!
+      contributor
     end
-    # Add any new identifiers or attach existing ones
-    contributor.contributor_identifiers = Array(hash.fetch(:identifiers, [])).map do |identifier|
-      ContributorIdentifier.new(source_id: hash[:source_id], identifier_id: Identifier.find_or_create_by(value: identifier).id)
-    end
-    # Add any new org or attach existing ones
-    if hash[:org].present?
-      hash[:org][:source_id] = hash[:source_id]
-      contributor.contributor_orgs << OrgContributor.new(source_id: hash[:source_id],
-                            org_id: Org.find_or_create_by_hash(hash[:org]).id)
-    end
-    contributor.save!
-    contributor
   end
 
   def update_by_hash!(hash)
     self.name = hash[:name] unless self.name.present?
     self.email = hash[:email] unless self.email.present?
 
-    # Add any new identifiers or attach existing ones
+    # Add any new identifiers
     Array(hash.fetch(:identifiers, [])).map do |identifier|
       obj = Identifier.find_or_create_by(value: identifier)
       if obj.present? && !ContributorIdentifier.find_by(source_id: hash[:source_id], identifier_id: obj.id, contributor_id: self.id).present?
         self.contributor_identifiers << ContributorIdentifier.new(source_id: hash[:source_id], identifier_id: obj.id)
       end
     end
-    # Add any new org or attach existing ones
+
+    # Add the email to the identifiers list if its not already there
+    if hash[:email].present?
+      obj = Identifier.find_or_create_by(value: hash[:email])
+      if obj.present? && !ContributorIdentifier.find_by(source_id: hash[:source_id], identifier_id: obj.id, contributor_id: self.id).present?
+        ContributorIdentifier.new(source_id: hash[:source_id],
+                                  identifier_id: Identifier.find_or_create_by(value: hash[:email]).id)
+      end
+    end
+
+    # Add the Org if applicable
     if hash[:org].present?
       hash[:org][:source_id] = hash[:source_id]
-      obj = Org.find_or_create_by_hash(hash[:org])
-      if obj.present? && !OrgContributor.find_by(source_id: hash[:source_id], org_id: obj.id, contributor_id: self.id).present?
-        self.contributor_orgs << OrgContributor.new(source_id: hash[:source_id], org_id: obj.id)
+      org = Org.find_or_create_by_hash(hash[:org])
+      if org.present? && !self.orgs.include?(org)
+        OrgContributor.new(source_id: hash[:source_id], org_id: org.id, contributor_id: self.id, )
       end
     end
     self.save!

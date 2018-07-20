@@ -8,7 +8,7 @@ class Geome
   # CONSTANTS
   BASE_DIR = "#{ROOT}/geome/tmp"
   OUTPUT = "#{BASE_DIR}/output.json"
-  MIN_PROJECT, MAX_PROJECT = 25, 26
+  MIN_PROJECT, MAX_PROJECT = 1, 51
   FIMS_ROOT_URL = "https://www.geome-db.org/rest/"
   FIMS_EXPEDITION_PATH = "projects/%{project_id}/expeditions"
   FIMS_QUERY_PATH = "projects/query/fastq"
@@ -128,25 +128,27 @@ class Geome
         markers = get_markers(project_id)
         project[:markers] = markers.nil? ? [] : markers.is_a?(Array) ? markers : [markers]
 
-        project[:expeditions] = expeditions.map do |expedition|
+        project[:documents] = expeditions.map do |expedition|
           exp_ids = []
           exp_ids << expedition['expeditionId'] unless expedition['expeditionId'].nil?
           exp_ids << expedition['expeditionCode'] unless expedition['expeditionCode'].nil? || expedition['expeditionCode'] == ''
+          exp_ids << expedition['expeditionTitle'] unless expedition['expeditionTitle'].nil?
           exp_ids << expedition['expeditionBcid'] unless expedition['expeditionBcid'].nil? || expedition['expeditionBcid'] == ''
           exp_ids << expedition['entityBcids'] unless expedition['entityBcids'].nil? || expedition['entityBcids'] == ''
 
-          user_hash = {
-            identifiers: [expedition['userId']],
-            name: expedition['username'] || '',
-            role: expedition['projectAdmin'] || 'false'
-          }
+          #user_hash = {
+          #  identifiers: [expedition['userId']].compact,
+          #  name: expedition['username'] || '',
+          #  role: expedition['projectAdmin'] || 'false'
+          #}
 
           {
             identifiers: exp_ids,
+            types: ['Dataset'],
             title: expedition['expeditionTitle'] || '',
-            start_date: expedition['ts'] || Time.now.to_s,
-            user: (user_hash['identifiers'].nil? && user_hash['name'] == '' ? {} : user_hash),
-            public: expedition['public'] || 'true'
+            #start_date: expedition['ts'] || Time.now.to_s,
+            #contributors: (user_hash[:identifiers].empty? && user_hash[:name] == '' ? [] : [user_hash]),
+            #public: expedition['public'] || 'true'
           }
         end
       elsif expeditions.length > 0

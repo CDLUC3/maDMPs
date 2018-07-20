@@ -30,13 +30,13 @@ class Biocode
       bounding_coords = "Geographic Boundary - Northern #{xml.xpath('coverage/geographicCoverage/boundingCoordinates/northBoundingCoordinate').text}, Eastern #{xml.xpath('coverage/geographicCoverage/boundingCoordinates/eastBoundingCoordinate').text}, Southern #{xml.xpath('coverage/geographicCoverage/boundingCoordinates/southBoundingCoordinate').text}, Western #{xml.xpath('coverage/geographicCoverage/boundingCoordinates/westBoundingCoordinate').text}"
       contribs = []
       contribs << {
-        name: "#{xml.xpath('creator/individualName/givenName').text} xml.xpath('creator/individualName/surName').text",
+        name: "#{xml.xpath('creator/individualName/givenName').text} #{xml.xpath('creator/individualName/surName').text}",
         email: xml.xpath('creator/electronicMailAddress').text,
         role: xml.xpath('creator/positionName').text,
         org: { name: xml.xpath('creator/organizationName').text }
       }
       contribs << {
-        name: "#{xml.xpath('metadataProvider/individualName/givenName').text} xml.xpath('creator/individualName/surName').text",
+        name: "#{xml.xpath('metadataProvider/individualName/givenName').text} #{xml.xpath('creator/individualName/surName').text}",
         email: xml.xpath('metadataProvider/electronicMailAddress').text,
         role: xml.xpath('metadataProvider/positionName').text,
         org: { name: xml.xpath('metadataProvider/organizationName').text }
