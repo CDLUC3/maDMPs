@@ -66,16 +66,27 @@ JSON output:
         }
       ],
 
-      "expeditions": [
+      "documents": [
+        {
+          "identifiers": ["https://dmptool.org/path/to/dmp.pdf"],
+          "types": ["Data Management Plan", "application/pdf"],
+          "title": "Data Management Plan"
+        }
+      ],
+      
+      "stages": [
         {
           "identifiers": ["12389", "TEST 1"],
+          "types": ["Cruise"],
           "title": "TEST 1 spreadsheet dataset",
           "start_date": "2018-06-21 08:09:10",
-          "user": {
-            "identifiers": ["0"],
-            "name": "demo",
-            "role": "Co-principal Investigator"
-          },
+          "contributors": [
+            {
+              "identifiers": ["0"],
+              "name": "demo",
+              "role": "Co-principal Investigator"
+            }
+          ],
           "public": "true"
         }
       ]
