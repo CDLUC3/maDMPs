@@ -10,6 +10,16 @@ class Org < ActiveRecord::Base
 
   validates :name, presence: true
 
+  def self.fuzzy_find(orgs, hash)
+    matches = orgs.select{ |o| !o.identifiers.select{ |i| Words.match?(hash[:name], i.value) }.empty? }.first
+    matches = orgs.select{ |o| Words.match?(hash[:name], o.name) }.first unless matches.present?
+    if matches.present?
+      matches
+    else
+      Org.new(hash)
+    end
+  end
+
   def self.find_or_create_by_hash(hash)
     if hash.is_a?(Hash)
       # If the id was passed, get the Project otherwise search for it based on its identifiers

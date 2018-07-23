@@ -9,6 +9,16 @@ class Contributor < ActiveRecord::Base
   has_many :identifiers, through: :contributor_identifiers
   has_many :projects, through: :project_contributors
 
+  def self.fuzzy_find(contributors, hash)
+    matches = contributors.select{ |c| !c.identifiers.select{ |i| Words.match?(hash[:name], i.value) }.empty? }.first
+    matches = contributors.select{ |c| Words.match?(hash[:name], c.name) }.first unless matches.present?
+    if matches.present?
+      matches
+    else
+      Contributor.new(hash)
+    end
+  end
+
   def self.find_or_create_by_hash(hash)
     if hash.is_a?(Hash)
       # If the id was passed, get the Project otherwise search for it based on its identifiers
@@ -44,7 +54,7 @@ class Contributor < ActiveRecord::Base
 
       # If there is an email add that as an identifier
       if hash[:email].present?
-        ContributorIdentifier.new(source_id: hash[:source_id],
+        contributor.contributor_identifiers << ContributorIdentifier.new(source_id: hash[:source_id],
                                   identifier_id: Identifier.find_or_create_by(value: hash[:email]).id)
       end
 
@@ -77,7 +87,7 @@ class Contributor < ActiveRecord::Base
     if hash[:email].present?
       obj = Identifier.find_or_create_by(value: hash[:email])
       if obj.present? && !ContributorIdentifier.find_by(source_id: hash[:source_id], identifier_id: obj.id, contributor_id: self.id).present?
-        ContributorIdentifier.new(source_id: hash[:source_id],
+        self.contributor_identifiers << ContributorIdentifier.new(source_id: hash[:source_id],
                                   identifier_id: Identifier.find_or_create_by(value: hash[:email]).id)
       end
     end

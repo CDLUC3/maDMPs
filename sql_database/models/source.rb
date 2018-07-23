@@ -1,4 +1,10 @@
 class Source < ActiveRecord::Base
+  has_many :api_scans
+  has_many :projects
+  has_many :orgs
+  has_many :contributors
+  has_many :stages
+  
   def downloader
     if self.directory.present?
       path = File.expand_path("..", Dir.pwd)

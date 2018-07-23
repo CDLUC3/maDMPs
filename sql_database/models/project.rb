@@ -3,6 +3,7 @@ require 'json'
 class Project < ActiveRecord::Base
   belongs_to :source
 
+  has_many :api_scans
   has_many :markers
   has_many :project_identifiers
   has_many :project_types

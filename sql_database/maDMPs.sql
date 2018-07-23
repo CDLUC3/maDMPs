@@ -8,6 +8,8 @@ CREATE TABLE awards(
   description TEXT,
   title VARCHAR(255) NOT NULL,
   amount FLOAT,
+  public_access_mandate BOOLEAN NOT NULL DEFAULT 0,
+  award_date DATETIME,
   offered_by INTEGER,
   source_id INTEGER NOT NULL,
   source_json TEXT,
@@ -49,6 +51,8 @@ CREATE TABLE orgs(
   id INTEGER NOT NULL AUTO_INCREMENT,
   source_id INTEGER NOT NULL,
   name VARCHAR(255) NOT NULL,
+  city VARCHAR(255),
+  state VARCHAR(255),
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
@@ -85,6 +89,14 @@ CREATE TABLE sources(
 CREATE TABLE types(
   id INTEGER NOT NULL AUTO_INCREMENT,
   value VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE TABLE api_scans(
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  source_id INTEGER NOT NULL,
+  project_id INTEGER NOT NULL,
+  last_scan DATETIME NOT NULL,
   created_at TIMESTAMP NOT NULL,
   PRIMARY KEY (id)
 );
@@ -263,3 +275,4 @@ CREATE TABLE document_types(
 INSERT INTO sources (name) VALUES ('geome');
 INSERT INTO sources (name) VALUES ('bco_dmo');
 INSERT INTO sources (name) VALUES ('biocode');
+INSERT INTO sources (name) VALUES ('nsf');
