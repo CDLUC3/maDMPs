@@ -1,14 +1,34 @@
 # maDMPs
 
-## GeOMe Reader
+## Services
 
-The geome_reader directory contains a simple Ruby utility program that queries the [Genomic Observatories Metadatabase](https://www.geome-db.org/) for project, expedition, and marker metadata.
+There are several services defined in the database which have corresponding subfolders in this project. Each services either downloads data via an API or loads it via a file manually placed in the service's `/tmp` directory. The service then transforms that data into a standardized JSON format.
 
-To run the program (assuming you have cloned this project to your local machine): `ruby geome_reader/application.rb`
+### Berkeley Biocode
+
+The Berkeley Biocode site currently houses the GUMP Moorea research station project metadata: http://bnhmipt.berkeley.edu/ipt/resource?r=biocode. This information will be moving to the GeOMe project. The EML file must be manually downloaded and placed into the `biocode/tmp/biocode.xml` directory
+
+### GeOMe
+
+The [Genomic Observatories Metadatabase](https://www.geome-db.org/) (GeOMe) contains project, and dataset metadata. The service retrieves data directly from GeOMe via their public API.
 
 This program was based on the [R program](https://github.com/DIPnet/fimsR-access) referenced on the GeOMe website. The underlying code makes HTTPS calls to the [FIMS API](https://fims.readthedocs.io/en/latest/fims/introduction.html) to query the GeOMe database and retrieve JSON data.
 
-JSON output:
+### BCO-DMO
+
+The BCO-DMO project metadata must be acquired manually and placed into the `bco_dmo/tmp/bco_dmo.json` directory. 
+
+### NSF 
+
+This service scans through the database and queries the NSF API for award metadata.
+
+### DMPTool
+
+This service scans through the database and queries the DMPTool for DMP metadata.
+
+## Standardized JSON Output
+
+All of the services produce a standard JSON output:
 ```json
 {
   "projects": [
@@ -94,3 +114,12 @@ JSON output:
   ],
 }
 ```
+
+## SQL Database
+
+There is a MySQL database definition in `sql_database/maDMPs.sql` which can be used to generate your DB. Once your DB has been created you can run `ruby application.rb` to populate it. 
+
+- To run all services and load their findings into the DB run `ruby application.rb`.
+- To run a specific service(s) and load its findings into the DB just supply the name(s) of the services you want to run: `ruby application service1 service2`
+
+The available services are: biocode, geome, bco_dmo, nsf, dmptool
