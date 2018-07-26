@@ -3,6 +3,6 @@ require 'active_record'
 
 ActiveRecord::Base.establish_connection(
   adapter: 'mysql2',
-  database: 'maDMPs',
+  database: 'machine_actionable',
   username: 'root'
 )

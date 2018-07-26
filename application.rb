@@ -1,4 +1,5 @@
 require_relative 'sql_database/sql_database'
+require_relative 'nosql_database/nosql_database'
 
 ROOT = Dir.pwd
 services = []
@@ -27,7 +28,9 @@ services.each do |service|
     if obj.respond_to?(:process)
       puts "Running #{service}"
       puts "---------------------------------------"
-      SqlDatabase.process(service, obj.send(:process))
+      json = obj.send(:process)
+      SqlDatabase.process(service, json)
+      NosqlDatabase.process(service, json)
       puts "Done\n"
     else
       puts "SKIPPING: No method called 'process' found for #{service}"

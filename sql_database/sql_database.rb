@@ -14,8 +14,8 @@ class SqlDatabase
           # Attempt to find the project. If it does not exist create it
           puts "  Processing project #{idx}: #{project_hash[:title]}"
           project = Project.find_or_create_by_hash(project_hash)
-
-puts project
+          puts "  Done!"
+          project
         end
       end
     else

@@ -1,6 +1,3 @@
-#CREATE DATABASE maDMPs;
-USE maDMPs;
-
 # BASE TABLES
 # -----------------------------------------------------
 CREATE TABLE awards(
