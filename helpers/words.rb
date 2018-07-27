@@ -49,13 +49,16 @@ module Words
     capitalized.map{ |w| w[0] }.join('').to_s
   end
 
-  def self.match?(textA, textB)
+  def self.match_percent(textA, textB)
     wordsA = cleanse(textA)
     wordsB = cleanse(textB)
-    if wordsA.eql?(wordsB) || (text_to_acronym(textA) == text_to_acronym(textB))
-      true
+    if wordsA.eql?(wordsB)
+      1.0
+    elsif text_to_acronym(textA).length > 2 && text_to_acronym(textB).length > 2 &&
+            text_to_acronym(textA) == text_to_acronym(textB)
+      1.0
     else
-      (wordsA.select{ |w| wordsB.include?(w) }.length / wordsA.length) >= 0.75
+      (wordsA.select{ |w| wordsB.include?(w) }.length / wordsA.length).to_f
     end
   end
 end

@@ -29,8 +29,8 @@ services.each do |service|
       puts "Running #{service}"
       puts "---------------------------------------"
       json = obj.send(:process)
-      SqlDatabase.process(service, json)
-      NosqlDatabase.process(service, json)
+      #SqlDatabase.process(service, json)
+      NosqlDatabase.new.process(service, json)
       puts "Done\n"
     else
       puts "SKIPPING: No method called 'process' found for #{service}"
