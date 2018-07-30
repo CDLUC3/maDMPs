@@ -1,0 +1,5 @@
+
+create constraint on (p:Project) assert p.madmp_id is unique
+create constraint on (p:Person) assert p.madmp_id is unique
+create constraint on (o:Org) assert o.madmp_id is unique
+create constraint on (i:Identifier) assert i.value is unique
