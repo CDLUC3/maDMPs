@@ -9,25 +9,68 @@ class CypherHelper
   # Add/Update the Project and attach Persons who have contributed
   # --------------------------------------------------------------
   def project_from_hash!(hash)
+    props, rels = hash_to_props_and_rels(hash)
     project_id = node_from_hash!(hash, 'Project', 'title')
 
-    hash[:contributors].each do |contributor|
-      contrib_id = person_from_hash!(contributor.select{ |k,v| k != :role })
-      
+    hash.fetch(:markers, []).each do |marker|
+      marker_id = marker_from_hash!(marker)
       @session.query(
-        "MATCH (p:Project {madmp_id: '#{project_id}'}) \
-         MATCH (c:Person {madmp_id: '#{contrib_id}'}) \
-         MERGE (c)-[r:CONTRIBUTED_TO]->(p) \
-         FOREACH(role IN CASE WHEN '#{contributor[:role]}' IN r.roles THEN [] ELSE [1] END | SET r.roles = coalesce(r.roles, []) + '#{contributor[:role]}')")
+        "MATCH (m:Marker {madmp_id: '#{marker_id}'}) \
+         MATCH (p:Project {madmp_id: '#{project_id}'}) \
+         MERGE (p)-[r:REFERENCES]->(m) \
+         FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')"
+      )
     end
+
+    hash.fetch(:documents, []).each do |document|
+      doc_id = document_from_hash!(document)
+      @session.query(
+        "MATCH (d:Document {madmp_id: '#{doc_id}'}) \
+         MATCH (p:Project {madmp_id: '#{project_id}'}) \
+         MERGE (p)-[r:REFERENCES]->(d) \
+         FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')"
+      )
+    end
+
+    hash.fetch(:contributors, []).each do |contributor|
+      contrib_id = person_from_hash!(contributor.select{ |k,v| k != :role })
+      base_query = "MATCH (c:Person {madmp_id: '#{contrib_id}'}) \
+                    MATCH (p:Project {madmp_id: '#{project_id}'}) \
+                    MERGE (c)-[r:CONTRIBUTED_TO]->(p) "
+      @session.query(!contributor.fetch(:role, nil).present? ? base_query :
+        "#{base_query} FOREACH(role IN CASE WHEN '#{contributor[:role]}' IN r.roles THEN [] ELSE [1] END | SET r.roles = coalesce(r.roles, []) + '#{contributor[:role]}')")
+    end
+
+    hash.fetch(:awards, []).each do |award|
+      award_id = award_from_hash!(award)
+      @session.query(
+        "MATCH (a:Award {madmp_id: '#{award_id}'}) \
+         MATCH (p:Project {madmp_id: '#{project_id}'}) \
+         MERGE (a)-[r:PRESENTED_TO]->(p) \
+         FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')"
+      )
+    end
+
     project_id
+  end
+
+  # Add/Update the Marker
+  # --------------------------------------------------------------
+  def marker_from_hash!(hash)
+    node_from_hash!(hash, 'Marker', 'value')
+  end
+
+  # Add/Update the Document
+  # --------------------------------------------------------------
+  def document_from_hash!(hash)
+    node_from_hash!(hash, 'Document', 'value')
   end
 
   # Add/Update the Person and attach Orgs they are a member of
   # --------------------------------------------------------------
   def person_from_hash!(hash)
     contributor_id = node_from_hash!(hash, 'Person', 'name')
-    
+
     if hash[:org].present?
       org_id = org_from_hash!(hash[:org])
       @session.query(
@@ -37,13 +80,36 @@ class CypherHelper
     end
     contributor_id
   end
-  
+
+  # Add/Update the Document
+  # --------------------------------------------------------------
+  def award_from_hash!(hash)
+    award_id = node_from_hash!(hash, 'Award', 'name')
+
+    if hash[:org].present?
+      org_id = org_from_hash!(hash[:org])
+      @session.query(
+        "MATCH (a:Award {madmp_id: '#{award_id}'}) \
+         MATCH (o:Org {madmp_id: '#{org_id}'}) \
+         MERGE (o)-[r:FUNDED]->(a)")
+    end
+
+    if hash[:offered_by].present?
+      person_id = person_from_hash!(hash[:offered_by])
+      @session.query(
+        "MATCH (a:Award {madmp_id: '#{award_id}'}) \
+         MATCH (p:Person {madmp_id: '#{person_id}'}) \
+         MERGE (p)-[r:OFFERED]->(a)")
+    end
+    award_id
+  end
+
   # Add/Update the Org
   # --------------------------------------------------------------
   def org_from_hash!(hash)
     node_from_hash!(hash, 'Org', 'name')
   end
-  
+
   # Generic method to Add/Update the specified label w/unique_property and attach any identifiers
   # --------------------------------------------------------------
   def node_from_hash!(hash, label, unique_property)
@@ -55,35 +121,41 @@ class CypherHelper
       # Do an exact match search first on the title. If not found do a fuzzy search
       result = @session.query("MATCH (n:#{label} #{hash_to_cypher(selector)}) RETURN n")
 
-puts "CLASS NAME: #{result.class.name}"
-puts "ANY? #{result.any?}"
-puts "HASHES --------------------"
-puts result.hashes.inspect
-puts "STRUCTS --------------------"
-puts result.hashes.inspect
-
-      node = result.rows.first if result.present?
-      
-      node = fuzzy_search(label, unique_property, hash[unique_property.to_sym], hash[:identifiers]) unless node.present?
+      if result.any?
+        node = result.rows.first
+      else
+        node = fuzzy_search(label, unique_property, hash[unique_property.to_sym], hash[:identifiers])
+      end
       madmp_id = (node.present? ? (node.is_a?(Array) ? node[0].props[:madmp_id] : node.props[:madmp_id]) : generate_madmps_id)
-      
+
       @session.query(
         "MERGE (n:#{label} {madmp_id: '#{madmp_id}'}) \
          SET n += #{hash_to_cypher(props)}")
-      
+
       ids.each do |id|
         if id.present?
           @session.query(
             "MATCH (n:#{label} {madmp_id: '#{madmp_id}'}) \
              MERGE (i:Identifier {value: '#{id.gsub(/\'/, "\'")}'}) \
-             MERGE (i)-[r:IDENTIFIES]->(o) \
+             MERGE (i)-[r:IDENTIFIES]->(n) \
              FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')")
         end
       end
+
+      hash.fetch(:types, []).each do |type|
+        if type.present?
+          @session.query(
+            "MATCH (n:#{label} {madmp_id: '#{madmp_id}'}) \
+             MERGE (t:Type {value: '#{type.gsub(/\'/, "\'")}'}) \
+             MERGE (t)-[r:CATEGORIZES]->(n) \
+             FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')")
+        end
+      end
+
       madmp_id
     end
   end
-  
+
   # Generic method to search for nodes based on a keyword or identifiers.
   # Function returns the most likely match based on:
   #   1) identifier match if the identifier is a URL
@@ -94,22 +166,24 @@ puts result.hashes.inspect
   # --------------------------------------------------------------
   def fuzzy_search(label, property, keyword, identifiers)
     matches = []
-    
+
     # Search by identifiers
     if identifiers.present? && identifiers.is_a?(Array)
       identifiers.each do |id|
         if id.to_s.match?('^http(s)?://.*')
           # If its a URL then we have a unique identifier!
-          matches << @session.query("MATCH (:Identifier {value: '#{id}'})-[:IDENTIFIES]->(n:#{label}) RETURN (n)")
+          results = @session.query("MATCH (:Identifier {value: '#{id}'})-[:IDENTIFIES]->(n:#{label}) RETURN (n)")
+          matches << results.rows.first if results.any?
         else
           # Otherwise consider the source along with the identifier
-          matches << @session.query(
+          results = @session.query(
             "MATCH (i:Identifier {value: '#{id}'})-[:IDENTIFIES]->(n:#{label}) \
              WHERE i.sources in ['#{@source}'] RETURN (n)")
+          matches << results.rows.first if results.any?
         end
       end
     end
-    
+
     if matches.empty?
       # Look for a match by keyword
       words = Words.cleanse(keyword)
@@ -119,16 +193,17 @@ puts result.hashes.inspect
       # For example if value = 'University of California - Berkeley' search
       # the graph for any nodes with a title containing University, California or
       # Berkeley.
-      nodes = @session.query(query_stem % { where_clause: words.map{ |w| "n.#{property} =~ '.*(?i)#{w.gsub("'", "\'")}.*'" }.join(' OR ') })
+      results = @session.query(query_stem % { where_clause: words.map{ |w| "n.#{property} =~ '.*(?i)#{w.gsub("'", "\'")}.*'" }.join(' OR ') })
 
-      # Search through the results and attempt to find a match
-      nodes.each do |row|
-        probability = Words.match_percent(value, row[1].props[:title])
-        matches << [probability, row[1]] #unless probability < 0.75
+      if results.any?
+        # Search through the results and attempt to find a match
+        results.rows.each do |row|
+          node = row.first
+          probability = Words.match_percent(keyword, node.props[property.to_sym])
+          matches << [probability, node.props[property.to_sym]] #unless probability < 0.75
+        end
       end
     end
-
-puts matches.class.name
 
     best_match = matches.sort{ |a,b| a[0]<=>b[0] }.last
     best_match.respond_to?(:rows) ? (best_match.rows.empty? ? nil : best_match.rows[1][0]) : nil
