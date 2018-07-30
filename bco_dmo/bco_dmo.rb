@@ -93,6 +93,7 @@ class BcoDmo
       end
 
       projects << {
+        source: 'bco_dmo',
         identifiers: proj_ids,
         types: proj_types,
         title: project['name'],

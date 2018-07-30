@@ -143,6 +143,7 @@ class Geome
           #}
 
           {
+            source: 'geome',
             identifiers: exp_ids,
             types: ['Dataset'],
             title: expedition['expeditionTitle'] || '',

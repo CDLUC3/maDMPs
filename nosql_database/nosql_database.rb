@@ -17,7 +17,7 @@ class NosqlDatabase
     if json.is_a?(Hash)
       puts "  Loading #{service} metadata into the graph database."
       json[:projects].each do |project|
-        project = CypherHelper.new(@session).project_from_hash(project)
+        project = CypherHelper.new(project[:source], @session).project_from_hash!(project)
       end
 
     end

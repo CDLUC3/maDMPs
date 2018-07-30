@@ -30,18 +30,21 @@ class Biocode
       bounding_coords = "Geographic Boundary - Northern #{xml.xpath('coverage/geographicCoverage/boundingCoordinates/northBoundingCoordinate').text}, Eastern #{xml.xpath('coverage/geographicCoverage/boundingCoordinates/eastBoundingCoordinate').text}, Southern #{xml.xpath('coverage/geographicCoverage/boundingCoordinates/southBoundingCoordinate').text}, Western #{xml.xpath('coverage/geographicCoverage/boundingCoordinates/westBoundingCoordinate').text}"
       contribs = []
       contribs << {
+        identifiers: [xml.xpath('creator/electronicMailAddress').text],
         name: "#{xml.xpath('creator/individualName/givenName').text} #{xml.xpath('creator/individualName/surName').text}",
         email: xml.xpath('creator/electronicMailAddress').text,
         role: xml.xpath('creator/positionName').text,
         org: { name: xml.xpath('creator/organizationName').text }
       }
       contribs << {
+        identifiers: [xml.xpath('metadataProvider/electronicMailAddress').text],
         name: "#{xml.xpath('metadataProvider/individualName/givenName').text} #{xml.xpath('creator/individualName/surName').text}",
         email: xml.xpath('metadataProvider/electronicMailAddress').text,
         role: xml.xpath('metadataProvider/positionName').text,
         org: { name: xml.xpath('metadataProvider/organizationName').text }
       }
       project_json = {
+        source: 'biocode',
         identifiers: xml.xpath('alternateIdentifier').map{ |id| id.text },
         title: xml.xpath('title').text,
         license: xml.xpath('intellectualRights/para').text,
