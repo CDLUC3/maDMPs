@@ -37,7 +37,11 @@ module Words
   end
 
   def self.valid?(token)
-    (((token =~ TOKEN_REGEXP) == 0)) and !(STOP_WORDS.member?(token))
+    (((token =~ TOKEN_REGEXP) == 0) &&
+     !(token =~ /^[\d\.]+$/) &&           # no numbers
+     !(token =~ /^http/) &&               # No URLs
+     !(token =~ /^[a-fA-F0-9]{4,}$/) &&   # No UUIDs (dashes already removed)
+     !(STOP_WORDS.member?(token)))
   end
 
   def self.cleanse(text)

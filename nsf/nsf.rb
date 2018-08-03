@@ -16,132 +16,179 @@
 #      "date" : "08/12/2014",
 #      "title" : "An interesting project title"
 #    },
-
 require 'date'
 require 'json'
 require 'uri'
 require 'net/http'
-require_relative '../helpers/words'
+require_relative '../nosql_database/cypher_helper'
+require_relative '../nosql_database/nosql_database'
 
 class Nsf
-  include Words
+  include CypherHelper
 
   ROOT_URL = 'https://api.nsf.gov/services/v1/awards'
   SCAN_THRESHOLD = 7 #days
 
-  def process
-    min_date = (Date.today - SCAN_THRESHOLD)
-    source = Source.find_by(name: 'nsf')
-    puts "  Retrieving award metadata from the NSF API at: #{ROOT_URL}."
+  def initialize
+    @source = 'nsf-awards-api'
+    @session = NosqlDatabase.new.session
+  end
 
-    Project.includes(:api_scans, [contributors: :orgs]).limit(2).each do |project|
-      scan = project.api_scans.where(source_id: source.id).first
-      if !scan.present? || scan.last_scan <= min_date
-        download(source.id, project)
-      end
+  def process()
+    puts "Searching for available projects ..."
+
+    scannable_projects[0..50].each do |project|
+      identifiers =
+      words = [project[:title], project_identifiers(project[:madmp_id])].flatten.uniq.join(' ')
+      keywords = Words.cleanse(words)
+
+      awards = call_api(project, keywords)
     end
   end
 
-  def download(source_id, project)
-    words = Words.cleanse(project.title)
-    prj_contributors = project.contributors
-    prj_orgs = prj_contributors.collect{ |c| c.orgs }.flatten.uniq
+  def scannable_projects
+    min_date = Date.today - SCAN_THRESHOLD
+    results = @session.query(
+      "MATCH (p:Project) \
+       WHERE p.last_nsf_scan IS NULL OR p.last_nsf_scan < 'cypher_safe(#{min_date.to_s})' \
+       RETURN p"
+    )
 
-    unless words.empty?
-      json = []
-      base_uri = "#{ROOT_URL}.json?keyword=#{words.join('%20')}"
-      puts "    Searching NSF for project '#{project.title}'"
-      res = Net::HTTP.get(URI(base_uri))
-      json << JSON.parse(res)
-
-      if json.length > 0 && json.first['response'].present?
-        json.first['response']['award'][0..1].each do |award|
-          if award['awardeeName'].present? && award['piLastName'].present?
-            puts "      NSF found award: '#{award['title']}'"
-
-            potential_org = Org.fuzzy_find(prj_orgs, {
-              source_id: source_id,
-              name: award['awardeeName'],
-              city: award['awardeeCity'],
-              state: award['awardeeStateCode']
-            })
-            potential_contributor = Contributor.fuzzy_find(prj_contributors, {
-              source_id: source_id,
-              name: "#{award['piFirstName']} #{award['piLastName']}"
-            })
-
-            if Words.match?(project.title, award['title'])
-              if potential_org.id.present? || potential_contributor.id.present?
-                if potential_org.id.present?
-                  puts "      Verified award with match on '#{potential_org.name}' (#{potential_org.id})"
-                else
-                  puts "      Unable to match Org: '#{potential_org.name}'"
-                end
-                if potential_contributor.id.present?
-                  puts "      Verified award with match on '#{potential_contributor.name}' (#{potential_contributor.id})"
-                else
-                  puts "      Unable to match Contributor: '#{potential_contributor.name}'"
-                end
-              else
-                puts "      Unable to verify matching Org or Contributor for '#{award['title']}'"
-              end
-              puts JSON.pretty_generate(award)
-            else
-              puts "      Award title does not match project title: '#{award['title']}'"
-            end
-          end
-          puts "-----------------------------------------------"
-        end
-      end
+    if results.any? && results.rows.length > 0 && results.rows.first.is_a?(Array)
+      results.rows.map{ |row| row[0].props.select{ |k,v| k != :description } }
     else
       []
     end
   end
 
-  def processOrg(source_id, all_orgs, award_json)
-    matches = all_orgs.select{ |org| Words.match?(award_json['awardeeName'], org.name) }
-    # If no Org was found go ahead and add it to the DB
-    if matches.empty?
-      matches = [Org.find_or_create_by_hash!(
-        source_id: source_id,
-        name: award_json['awardeeName'],
-        city: award_json['awardeeCity'],
-        state: award_json['awardeeStateCode']
-      )]
+  def project_identifiers(project_id)
+    results = @session.query(
+      "MATCH (i:Identifier)-[:IDENTIFIES]-> (p:Project) \
+       WHERE p.madmp_id = '#{cypher_safe(project_id.to_s)}' \
+       RETURN i"
+    )
+    if results.any? && results.rows.length > 0 && results.rows.first.is_a?(Array)
+      results.rows.map{ |row| row[0].props[:value] }
+    else
+      []
     end
-    matches.flatten!
   end
 
-  def processContributor(source_id, all_contribs, award_json)
-    name = "#{award_json['piFirstName']} #{award_json['piLastName']}"
-    matches = all_contribs.select{ |contrib| Words.match?(name, contrib.name) }
-    # If no Contrib was found go ahead and add it to the DB
-    if matches.empty?
-      matches = [Contributor.fuzzy_find(all_contribs, name)]
+  def call_api(project, keywords)
+    json = []
+    uri = URI("#{ROOT_URL}.json?keyword=#{keywords.join('%20')}")
+
+    puts "    Searching NSF for project '#{project[:title]}'"
+    res = Net::HTTP.get(uri)
+    begin
+      json << JSON.parse(res)
+    rescue Exception
+      puts "    Unable to process the JSON response from the API!"
     end
-    matches.flatten!
+
+    if json.length > 0 && json.first['response'].present?
+      json.first['response']['award'][0..5].each do |award|
+        process_award(project, award)
+      end
+    else
+      puts "    No awards found"
+    end
+
+    @session.query(
+      "MATCH (p:Project {madmp_id: '#{cypher_safe(project[:madmp_id])}'}) \
+       SET p.last_nsf_scan = '#{cypher_safe(Date.today.to_s)}'"
+    )
   end
 
-  def processAward(source_id, org, contributor, award_json)
-    Award.find_or_create_by_hash!({
-      source_id: source_id,
-      title: award_json['title'],
-      amount: award_json['fundsObligatedAmt'],
-      public_access_mandata: award_json['publicAccessMandate'],
-      identifiers: [award_json['id']]
-    })
+  def process_award(project, award)
+    puts "      Received award: '#{award['title']}'"
+    # First verify that the Award title is similar to the project title
+    if Words.match_percent(award['title'], project[:title]) > 0.8
+      award_id = award_from_hash!(award)
+
+      # Now that we have awards lets check the PI name to see if we can
+      # verify that its for this project
+      name = cypher_safe("#{award['piFirstName']} #{award['piLastName']}")
+      contribs = @session.query(
+        "MATCH (p:Project {madmp_id: '#{cypher_safe(project[:madmp_id])}'})<-[r:CONTRIBUTED_TO]-(u:Person)-[:MEMBER_OF]->(o:Org) \
+         WHERE u.name =~ '.*#{name}.*' \
+         OR u.name =~ '.*#{cypher_safe(award['piLastName'])}.*' \
+         RETURN u, o")
+
+      # If any contributors were found we should also verify that their
+      # Org matches the Org in the award
+      if contribs.any? && contribs.rows.length > 0 && contribs.rows.first.is_a?(Array)
+        contribs.rows.each do |row|
+          if row.length > 1
+            if Words.match_percent(award['awardeeName'], row[1].props[:name]) > 0.8
+              contrib_id = row[0].props[:madmp_id]
+              puts "        Award title and PI match! Updating award information"
+
+              @session.query(
+                "MATCH (p:Project {madmp_id: '#{cypher_safe(project[:madmp_id])}'}) \
+                 MATCH (a:Award {madmp_id: '#{cypher_safe(award_id)}'}) \
+                 MERGE (a)-[r:PRESENTED_TO]->(p) \
+                 FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')"
+              )
+            end
+          end
+        end
+      else
+        puts "        Award title matched project but contributor is unknown"
+        contrib_id = person_from_hash!(award)
+        @session.query(
+          "MATCH (p:Project {madmp_id: '#{cypher_safe(project[:madmp_id])}'}) \
+           MATCH (u:User {madmp_id: '#{cypher_safe(contrib_id)}'}) \
+           MATCH (a:Award {madmp_id: '#{cypher_safe(award_id)}'}) \
+           MERGE (a)-[r:PRESENTED_TO]->(p) \
+           MERGE (u)-[r2:CONTRIBUTED_TO]->(p) \
+           FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}') \
+           FOREACH(s2 IN CASE WHEN '#{@source}' IN r2.sources THEN [] ELSE [1] END | SET r2.sources = coalesce(r2.sources, []) + '#{@source}')"
+        )
+      end
+    else
+      puts "        Award title does not match project title!"
+    end
+  end
+
+  def award_from_hash!(hash)
+    award_id = node_from_hash!({
+      name: cypher_safe(hash['title']),
+      identifiers: [cypher_safe(hash['id'])],
+      amount: cypher_safe(hash['fundsObligatedAmt']),
+      date: cypher_safe(hash['date']),
+      public_access_mandate: cypher_safe(hash['publicAccessMandate']),
+      org: { name: cypher_safe(hash['agency']) }
+    }, 'Award', 'name')
+
+    if hash['agency'].present?
+      org_id = node_from_hash!({ name: cypher_safe(hash['agency']) }, 'Org', 'name')
+      @session.query(
+        "MATCH (a:Award {madmp_id: '#{award_id}'}) \
+         MATCH (o:Org {madmp_id: '#{org_id}'}) \
+         MERGE (o)-[r:FUNDED]->(a) \
+         FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')")
+    end
+    award_id
+  end
+
+  def person_from_hash!(hash)
+    contributor_id = node_from_hash!({
+      name: cypher_safe("#{award['piFirstName']} #{award['piLastName']}")
+    }, 'Person', 'name')
+
+    if hash['awardeeName'].present?
+      org_id = node_from_hash!({
+        name: cypher_safe(hash['awardeeName']),
+        city: cypher_safe(hash['awardeeCity']),
+        state: cypher_safe(hash['awardeeStateCode'])
+      }, 'Org', 'name')
+      @session.query(
+        "MATCH (p:Person {madmp_id: '#{contributor_id}'}) \
+         MATCH (o:Org {madmp_id: '#{org_id}'}) \
+         MERGE (p)-[r:MEMBER_OF]->(o) \
+         FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')")
+    end
+    contributor_id
   end
 end
-
-
-#      "agency" : "NSF",
-#      "awardeeCity" : "Somewhere",
-#      "awardeeName" : "University of Somewhere",
-#      "awardeeStateCode" : "CA",
-#      "fundsObligatedAmt" : "1234",
-#      "id" : "0000012",
-#      "piFirstName" : "John",
-#      "piLastName" : "Doe",
-#      "publicAccessMandate" : "0",
-#      "date" : "08/12/2014",
-#      "title" : "An interesting project title"

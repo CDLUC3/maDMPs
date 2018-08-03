@@ -1,10 +1,12 @@
 require 'neo4j'
 require 'neo4j/session_manager'
 require_relative '../helpers/words'
-require_relative './cypher_helper'
+require_relative './processor'
 
 # Used example at: https://github.com/neo4j-examples/movies-ruby-neo4jrb
 class NosqlDatabase
+  attr_reader :session
+
   def initialize
     puts "  Establishing connection to Neo4j"
     Neo4j::ActiveBase.on_establish_session do
@@ -17,9 +19,9 @@ class NosqlDatabase
     if json.is_a?(Hash)
       puts "  Loading #{service} metadata into the graph database."
       json[:projects].each do |project|
-        project = CypherHelper.new(project[:source], @session).project_from_hash!(project)
+        puts "    Processing - `#{project[:title]}`"
+        project = Processor.new(service, @session).project_from_hash!(project)
       end
-
     end
   end
 end
