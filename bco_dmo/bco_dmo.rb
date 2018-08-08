@@ -75,7 +75,7 @@ class BcoDmo
           awards << {
             org: org_hash,
             title: offer['name'],
-            identifiers: award_ids.select{|a| a.present? },
+            identifiers: award_ids.select{|a| a.to_s },
             offered_by: { name: offer['offeredBy']['name'], identifiers: [offer['offeredBy']['@id']], role: offer['offeredBy']['additionalType']}
           }
         end

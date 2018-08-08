@@ -62,7 +62,7 @@ module Words
             text_to_acronym(textA) == text_to_acronym(textB)
       1.0
     else
-      (wordsA.select{ |w| wordsB.include?(w) }.length / wordsA.length).to_f
+      (((wordsA.select{ |w| wordsB.include?(w) }.length / wordsA.length) + (wordsB.select{ |w| wordsA.include?(w) }.length / wordsB.length)) / 2).to_f
     end
   end
 end

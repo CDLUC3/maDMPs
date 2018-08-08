@@ -37,8 +37,7 @@ class Nsf
   def process()
     puts "Searching for available projects ..."
 
-    scannable_projects[0..50].each do |project|
-      identifiers =
+    scannable_projects.each do |project|
       words = [project[:title], project_identifiers(project[:madmp_id])].flatten.uniq.join(' ')
       keywords = Words.cleanse(words)
 
@@ -51,6 +50,7 @@ class Nsf
     results = @session.query(
       "MATCH (p:Project) \
        WHERE p.last_nsf_scan IS NULL OR p.last_nsf_scan < 'cypher_safe(#{min_date.to_s})' \
+       AND (p.title =~ '.*Biocode.*' OR p.title =~ '.*Moorea.*')
        RETURN p"
     )
 
@@ -174,7 +174,7 @@ class Nsf
 
   def person_from_hash!(hash)
     contributor_id = node_from_hash!({
-      name: cypher_safe("#{award['piFirstName']} #{award['piLastName']}")
+      name: cypher_safe("#{hash['piFirstName']} #{hash['piLastName']}")
     }, 'Person', 'name')
 
     if hash['awardeeName'].present?

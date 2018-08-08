@@ -10,7 +10,7 @@ class NosqlDatabase
   def initialize
     puts "  Establishing connection to Neo4j"
     Neo4j::ActiveBase.on_establish_session do
-      Neo4j::SessionManager.open_neo4j_session(:http, 'http://neo4j:madmps@localhost:7474')
+      Neo4j::SessionManager.open_neo4j_session(:http, 'http://neo4j:madmps@localhost:11001')
     end
     @session = Neo4j::ActiveBase.current_session
   end

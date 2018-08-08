@@ -89,7 +89,9 @@ class Processor
   # Add/Update the Document
   # --------------------------------------------------------------
   def award_from_hash!(hash)
-    award_id = node_from_hash!(hash, 'Award', 'name')
+    award_id = node_from_hash!(hash, 'Award', 'title')
+
+puts "****** Processing award: #{award_id}"
 
     if hash[:org].present?
       org_id = org_from_hash!(hash[:org])

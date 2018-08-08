@@ -59,11 +59,19 @@ class Geome
   #   "expeditionBcid"=>nil,
   #   "entityBcids"=>nil,
   #   "public"=>true}
-  def get_expeditions(project_id)
+  def get_expeditions(project_id, limit=10)
     uri = URI("#{FIMS_ROOT_URL}#{FIMS_EXPEDITION_PATH}".gsub('%{project_id}', project_id.to_s))
     puts "    Getting Expeditions for Project #{project_id}: #{uri}"
     res = Net::HTTP.get(uri)
-    JSON.parse(res)
+    case res
+      when Net::HTTPSuccess then 
+        JSON.parse(res)
+      when Net::HTTPRedirection then 
+        get_expeditions(res['location'], limit - 1)
+      else
+        puts "      #{res}"
+        []
+      end
   end
 
   # Expecting an array of markers in the following JSON format:
