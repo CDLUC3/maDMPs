@@ -1,5 +1,6 @@
 require 'neo4j'
-require 'neo4j/session_manager'
+#require 'neo4j/session_manager'
+require 'neo4j/core/cypher_session/adaptors/bolt'
 require_relative '../helpers/words'
 require_relative './processor'
 
@@ -9,10 +10,12 @@ class NosqlDatabase
 
   def initialize
     puts "  Establishing connection to Neo4j"
-    Neo4j::ActiveBase.on_establish_session do
-      Neo4j::SessionManager.open_neo4j_session(:http, 'http://neo4j:madmps@localhost:11001')
-    end
-    @session = Neo4j::ActiveBase.current_session
+    #Neo4j::ActiveBase.on_establish_session do
+      #Neo4j::SessionManager.open_neo4j_session(:http, 'http://neo4j:madmps@localhost:7687')
+    #end
+    #@session = Neo4j::ActiveBase.current_session
+    @neo4j_adaptor = Neo4j::Core::CypherSession::Adaptors::Bolt.new('bolt://neo4j:madmps@localhost:7687')
+    @session = Neo4j::Core::CypherSession.new(@neo4j_adaptor)
   end
 
   def process(service, json)
