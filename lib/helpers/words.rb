@@ -56,13 +56,21 @@ module Words
   def self.match_percent(textA, textB)
     wordsA = cleanse(textA)
     wordsB = cleanse(textB)
-    if wordsA.eql?(wordsB)
-      1.0
-    elsif text_to_acronym(textA).length > 2 && text_to_acronym(textB).length > 2 &&
-            text_to_acronym(textA) == text_to_acronym(textB)
-      1.0
+    if wordsA.present? && wordsB.present?
+      if wordsA.eql?(wordsB)
+        1.0
+      elsif text_to_acronym(textA).length > 2 && text_to_acronym(textB).length > 2 &&
+              text_to_acronym(textA) == text_to_acronym(textB)
+        1.0
+      else
+        if wordsA.select{ |w| wordsB.include?(w) }.length > 0
+          (((wordsA.select{ |w| wordsB.include?(w) }.length / wordsA.length) + (wordsB.select{ |w| wordsA.include?(w) }.length / wordsB.length)) / 2).to_f
+        else
+          0
+        end
+      end
     else
-      (((wordsA.select{ |w| wordsB.include?(w) }.length / wordsA.length) + (wordsB.select{ |w| wordsA.include?(w) }.length / wordsB.length)) / 2).to_f
+      0
     end
   end
 end

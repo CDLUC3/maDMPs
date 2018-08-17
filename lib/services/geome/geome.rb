@@ -6,9 +6,9 @@ require 'net/http'
 
 class Geome
   # CONSTANTS
-  BASE_DIR = "#{ROOT}/geome/tmp"
+  BASE_DIR = "#{ROOT}/lib/services/geome/tmp"
   OUTPUT = "#{BASE_DIR}/output.json"
-  MIN_PROJECT, MAX_PROJECT = 1, 51
+  MIN_PROJECT, MAX_PROJECT = 25, 26 #1, 51
   FIMS_ROOT_URL = "https://www.geome-db.org/rest/"
   FIMS_EXPEDITION_PATH = "projects/%{project_id}/expeditions"
   FIMS_QUERY_PATH = "projects/query/fastq"
@@ -64,9 +64,9 @@ class Geome
     puts "    Getting Expeditions for Project #{project_id}: #{uri}"
     res = Net::HTTP.get(uri)
     case res
-      when Net::HTTPSuccess then 
+      when Net::HTTPSuccess then
         JSON.parse(res)
-      when Net::HTTPRedirection then 
+      when Net::HTTPRedirection then
         get_expeditions(res['location'], limit - 1)
       else
         puts "      #{res}"
@@ -124,8 +124,13 @@ class Geome
       expeditions = get_expeditions(project_id)
       project, proj_ids = {}, [project_id]
 
+puts expeditions.inspect
+
       if expeditions.is_a?(Array) && expeditions.length > 0 && expeditions[0]['project'].is_a?(Hash)
         project = expeditions[0]['project']
+
+
+
         proj_ids << project['projectCode'] unless project['projectCode'].nil?
 
         project = {

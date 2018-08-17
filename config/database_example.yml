@@ -1,0 +1,15 @@
+neo4j:
+  adapter: 'bolt'
+  host: 'localhost'
+  port: '7474'
+  username: 'neo4j'
+  password: 'neo4j'
+
+mysql:
+  adapter: 'mysql2',
+  host: 'localhost'
+  database: 'dmp',
+  username: 'root'
+  password: ''
+  encoding: utf8mb4
+  pool: 5

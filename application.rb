@@ -1,7 +1,10 @@
-require_relative 'sql_database/sql_database'
-require_relative 'nosql_database/nosql_database'
+require 'yaml'
+
+require_relative 'lib/database/session'
+require_relative 'lib/database/nodes/project'
 
 ROOT = Dir.pwd
+CONFIG = YAML.load(File.read("#{ROOT}/config/database.yml")).symbolize_keys
 services = []
 
 # All for different args to run individual services or all of them
@@ -10,16 +13,26 @@ if ARGV.empty?
   services = Dir["#{ROOT}/*/"].map{ |path| path.split('/').last }
 else
   ARGV.each do |service|
-    if Dir.exists?("#{ROOT}/#{service}")
+    if Dir.exists?("#{ROOT}/lib/services/#{service}")
       services << service unless service == 'sql_database'
     else
-      puts "SKIPPING: No directory found for #{service}. Expected ./#{service}/#{service}.rb"
+      puts "SKIPPING: No directory found for #{service}. Expected ./lib/services/#{service}/#{service}.rb"
     end
   end
 end
 
+@session = Database::Session.new(CONFIG.fetch(:neo4j, {}).symbolize_keys)
+
+# Testing
+project = Database::Project.new(session: @session, title: 'Testing', description: 'Blah blah blah', identifiers: ['a', 'b', 'c'], random: 'value')
+puts project.serialize_attributes
+
+loaded = Database::Project.find(@session, '42dc3caa8407d8115c67729a67cc58e8')
+
+puts project.save
+
 services.each do |service|
-  executable = "#{ROOT}/#{service}/#{service}.rb"
+  executable = "#{ROOT}/lib/services/#{service}/#{service}.rb"
   if File.exists?(executable)
     require executable
     clazz_name = service.gsub(/\s/, '').split(/_|\-/).to_a.reduce(''){ |out, part| out + part.capitalize }
@@ -29,8 +42,15 @@ services.each do |service|
       puts "Running #{service}"
       puts "---------------------------------------"
       json = obj.send(:process)
-      #SqlDatabase.process(service, json)
-      NosqlDatabase.new.process(service, json)
+
+      json[:projects].each do |project|
+        puts "    Processing - `#{project[:title]}`"
+        project = Database::Project.new(project.merge({ session: @session }))
+        puts project.serialize_attributes
+        project.save
+        puts "    -------"
+      end
+
       puts "Done\n"
     else
       puts "SKIPPING: No method called 'process' found for #{service}"

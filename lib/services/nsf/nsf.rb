@@ -20,6 +20,9 @@ require 'date'
 require 'json'
 require 'uri'
 require 'net/http'
+require 'neo4j'
+require 'neo4j/core/cypher_session/adaptors/bolt'
+
 require_relative '../nosql_database/cypher_helper'
 require_relative '../nosql_database/nosql_database'
 
@@ -31,7 +34,8 @@ class Nsf
 
   def initialize
     @source = 'nsf-awards-api'
-    @session = NosqlDatabase.new.session
+    @neo4j_adaptor = Neo4j::Core::CypherSession::Adaptors::Bolt.new('bolt://neo4j:madmps@localhost:7687')
+    @session = Neo4j::Core::CypherSession.new(@neo4j_adaptor)
   end
 
   def process()
@@ -153,7 +157,7 @@ class Nsf
 
   def award_from_hash!(hash)
     award_id = node_from_hash!({
-      name: cypher_safe(hash['title']),
+      title: cypher_safe(hash['title']),
       identifiers: [cypher_safe(hash['id'])],
       amount: cypher_safe(hash['fundsObligatedAmt']),
       date: cypher_safe(hash['date']),

@@ -1,0 +1,9 @@
+
+create constraint on (p:Project) assert p.uuid is unique
+create constraint on (p:Person) assert p.uuid is unique
+create constraint on (o:Org) assert o.uuid is unique
+create constraint on (m:Marker) assert m.uuid is unique
+create constraint on (d:Document) assert d.uuid is unique
+create constraint on (a:Award) assert a.uuid is unique
+create constraint on (i:Identifier) assert i.value is unique
+create constraint on (t:Type) assert t.value is unique

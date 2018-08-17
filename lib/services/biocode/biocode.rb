@@ -5,7 +5,7 @@ require 'nokogiri'
 #   http://bnhmipt.berkeley.edu/ipt/resource?r=biocode
 
 class Biocode
-  BASE_DIR = "#{ROOT}/biocode/tmp"
+  BASE_DIR = "#{ROOT}/lib/services/biocode/tmp"
   SOURCE = "#{BASE_DIR}/biocode.xml"
   OUTPUT = "#{BASE_DIR}/output.json"
 

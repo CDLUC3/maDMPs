@@ -3,7 +3,7 @@ require 'json'
 
 class BcoDmo
   # CONSTANTS
-  BASE_DIR = "#{ROOT}/bco_dmo/tmp"
+  BASE_DIR = "#{ROOT}/lib/services/bco_dmo/tmp"
   SOURCE = "#{BASE_DIR}/bco_dmo.json"
   OUTPUT = "#{BASE_DIR}/output.json"
 
@@ -54,9 +54,13 @@ class BcoDmo
         project['contributor'].each do |contrib_hash|
           contributors << {
             name: contrib_hash['contributor']['name'],
+            types: [contrib_hash['contributor']['@type']],
             identifiers: [contrib_hash['contributor']['@id']],
             role: contrib_hash['roleName'],
-            org: { name: contrib_hash['odo:forOrganization']['name']}
+            org: {
+              name: contrib_hash['odo:forOrganization']['name'],
+              type: contrib_hash['odo:forOrganization']['@type']
+            }
           }
         end
       end
@@ -76,7 +80,14 @@ class BcoDmo
             org: org_hash,
             title: offer['name'],
             identifiers: award_ids.select{|a| a.to_s },
-            offered_by: { name: offer['offeredBy']['name'], identifiers: [offer['offeredBy']['@id']], role: offer['offeredBy']['additionalType']}
+            types: [offer['@type'], offer['additionalType']]
+          }
+          contributors << {
+            name: offer['offeredBy']['name'],
+            types: [offer['offeredBy']['@type']],
+            identifiers: [offer['offeredBy']['@id']],
+            role: offer['offeredBy']['additionalType'],
+            org: org_hash
           }
         end
       end
@@ -85,8 +96,8 @@ class BcoDmo
       unless project['odo:hasDataManagementPlan'].nil?
         project['odo:hasDataManagementPlan'].each do |dmp|
           documents << {
-            types: [dmp['description'], dmp['encodingFormat']] || [],
-            title: dmp['description'] || nil,
+            types: [dmp['description'], dmp['encodingFormat'], dmp['name']] || [],
+            title: dmp['url'] || nil,
             identifiers: [dmp['url']] || []
           }
         end
@@ -98,9 +109,9 @@ class BcoDmo
         types: proj_types,
         title: project['name'],
         description: project['description'],
-        contributors: contributors,
-        awards: awards,
-        documents: documents
+        contributors: contributors.uniq,
+        awards: awards.uniq,
+        documents: documents.uniq
       }
     end
 
