@@ -54,7 +54,6 @@ class BcoDmo
         project['contributor'].each do |contrib_hash|
           contributors << {
             name: contrib_hash['contributor']['name'],
-            types: [contrib_hash['contributor']['@type']],
             identifiers: [contrib_hash['contributor']['@id']],
             role: contrib_hash['roleName'],
             org: {
@@ -78,13 +77,12 @@ class BcoDmo
           award_ids = [offer['@id'], offer['name'], offer['sameAs']]
           awards << {
             org: org_hash,
-            title: offer['name'],
+            title: offer['name'].gsub('OCE-'),
             identifiers: award_ids.select{|a| a.to_s },
             types: [offer['@type'], offer['additionalType']]
           }
           contributors << {
             name: offer['offeredBy']['name'],
-            types: [offer['offeredBy']['@type']],
             identifiers: [offer['offeredBy']['@id']],
             role: offer['offeredBy']['additionalType'],
             org: org_hash

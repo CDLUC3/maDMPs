@@ -20,12 +20,27 @@ module Database
         @adapter = Neo4j::Core::CypherSession::Adaptors::HTTP.new(connection)
       end
 
+      @debug_mode = options.fetch(:debug, false)
+
       establish_connection
+    end
+
+    def debugging?
+      @debug_mode
     end
 
     def cypher_query(query)
       establish_connection unless Neo4j::ActiveBase.current_session.present?
-      Neo4j::ActiveBase.current_session.query(query)
+      if @debug_mode
+        puts "  #{query}"
+        puts ''
+      end
+
+      # Do not run any queries that would update the DB if we are in debug mode!
+      if !@debug_mode || (@debug_mode && (!query.include?('MERGE') && !query.include?('CREATE') &&
+                                          !query.include?('SET') && !query.include?('DELETE')))
+        Neo4j::ActiveBase.current_session.query(query)
+      end
     end
 
     private

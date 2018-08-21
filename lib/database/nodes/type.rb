@@ -1,10 +1,7 @@
-module Database
-  class Type
-    include Neo4j::ActiveNode
-    # Adds created_at and updated_at
-    include Neo4j::Timestamps
+require_relative './minimal_node'
 
-    property :value
-    validates :value, presence: true, uniqueness: true
+module Database
+  class Type < MinimalNode
+
   end
 end

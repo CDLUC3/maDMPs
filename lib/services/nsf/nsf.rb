@@ -23,26 +23,25 @@ require 'net/http'
 require 'neo4j'
 require 'neo4j/core/cypher_session/adaptors/bolt'
 
-require_relative '../nosql_database/cypher_helper'
-require_relative '../nosql_database/nosql_database'
+require_relative 'lib/database/session'
+require_relative 'lib/database/cypher_helper'
 
 class Nsf
-  include CypherHelper
+  include Database::CypherHelper
 
   ROOT_URL = 'https://api.nsf.gov/services/v1/awards'
   SCAN_THRESHOLD = 7 #days
 
-  def initialize
+  def initialize(params)
     @source = 'nsf-awards-api'
-    @neo4j_adaptor = Neo4j::Core::CypherSession::Adaptors::Bolt.new('bolt://neo4j:madmps@localhost:7687')
-    @session = Neo4j::Core::CypherSession.new(@neo4j_adaptor)
+    @session = params.fetch(:session, nil)
   end
 
   def process()
     puts "Searching for available projects ..."
 
     scannable_projects.each do |project|
-      words = [project[:title], project_identifiers(project[:madmp_id])].flatten.uniq.join(' ')
+      words = [project[:title], project_identifiers(project[:uuid])].flatten.uniq.join(' ')
       keywords = Words.cleanse(words)
 
       awards = call_api(project, keywords)
@@ -51,10 +50,9 @@ class Nsf
 
   def scannable_projects
     min_date = Date.today - SCAN_THRESHOLD
-    results = @session.query(
+    results = @session.cypher_query(
       "MATCH (p:Project) \
        WHERE p.last_nsf_scan IS NULL OR p.last_nsf_scan < 'cypher_safe(#{min_date.to_s})' \
-       AND (p.title =~ '.*Biocode.*' OR p.title =~ '.*Moorea.*')
        RETURN p"
     )
 
@@ -66,9 +64,9 @@ class Nsf
   end
 
   def project_identifiers(project_id)
-    results = @session.query(
+    results = @session.cypher_query(
       "MATCH (i:Identifier)-[:IDENTIFIES]-> (p:Project) \
-       WHERE p.madmp_id = '#{cypher_safe(project_id.to_s)}' \
+       WHERE p.uuid = '#{cypher_safe(project_id.to_s)}' \
        RETURN i"
     )
     if results.any? && results.rows.length > 0 && results.rows.first.is_a?(Array)
@@ -98,8 +96,8 @@ class Nsf
       puts "    No awards found"
     end
 
-    @session.query(
-      "MATCH (p:Project {madmp_id: '#{cypher_safe(project[:madmp_id])}'}) \
+    @session.cypher_query(
+      "MATCH (p:Project {uuid: '#{cypher_safe(project[:uuid])}'}) \
        SET p.last_nsf_scan = '#{cypher_safe(Date.today.to_s)}'"
     )
   end
@@ -113,8 +111,9 @@ class Nsf
       # Now that we have awards lets check the PI name to see if we can
       # verify that its for this project
       name = cypher_safe("#{award['piFirstName']} #{award['piLastName']}")
-      contribs = @session.query(
-        "MATCH (p:Project {madmp_id: '#{cypher_safe(project[:madmp_id])}'})<-[r:CONTRIBUTED_TO]-(u:Person)-[:MEMBER_OF]->(o:Org) \
+
+      contribs = @session.cypher_query(
+        "MATCH (p:Project {uuid: '#{cypher_safe(project[:uuid])}'})<-[r:CONTRIBUTES_TO]-(u:Person)-[:AFFILIATED_WITH]->(o:Org) \
          WHERE u.name =~ '.*#{name}.*' \
          OR u.name =~ '.*#{cypher_safe(award['piLastName'])}.*' \
          RETURN u, o")
@@ -125,13 +124,13 @@ class Nsf
         contribs.rows.each do |row|
           if row.length > 1
             if Words.match_percent(award['awardeeName'], row[1].props[:name]) > 0.8
-              contrib_id = row[0].props[:madmp_id]
+              contrib_id = row[0].props[:uuid]
               puts "        Award title and PI match! Updating award information"
 
               @session.query(
-                "MATCH (p:Project {madmp_id: '#{cypher_safe(project[:madmp_id])}'}) \
-                 MATCH (a:Award {madmp_id: '#{cypher_safe(award_id)}'}) \
-                 MERGE (a)-[r:PRESENTED_TO]->(p) \
+                "MATCH (p:Project {uuid: '#{cypher_safe(project[:uuid])}'}) \
+                 MATCH (a:Award {uuid: '#{cypher_safe(award_id)}'}) \
+                 MERGE (p)-[r:RECEIVED]->(a) \
                  FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')"
               )
             end
@@ -141,11 +140,11 @@ class Nsf
         puts "        Award title matched project but contributor is unknown"
         contrib_id = person_from_hash!(award)
         @session.query(
-          "MATCH (p:Project {madmp_id: '#{cypher_safe(project[:madmp_id])}'}) \
-           MATCH (u:User {madmp_id: '#{cypher_safe(contrib_id)}'}) \
-           MATCH (a:Award {madmp_id: '#{cypher_safe(award_id)}'}) \
-           MERGE (a)-[r:PRESENTED_TO]->(p) \
-           MERGE (u)-[r2:CONTRIBUTED_TO]->(p) \
+          "MATCH (p:Project {uuid: '#{cypher_safe(project[:uuid])}'}) \
+           MATCH (u:User {uuid: '#{cypher_safe(contrib_id)}'}) \
+           MATCH (a:Award {uuid: '#{cypher_safe(award_id)}'}) \
+           MERGE (p)-[r:RECEIVED]->(a) \
+           MERGE (u)-[r2:CONTRIBUTES_TO]->(p) \
            FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}') \
            FOREACH(s2 IN CASE WHEN '#{@source}' IN r2.sources THEN [] ELSE [1] END | SET r2.sources = coalesce(r2.sources, []) + '#{@source}')"
         )
@@ -168,8 +167,8 @@ class Nsf
     if hash['agency'].present?
       org_id = node_from_hash!({ name: cypher_safe(hash['agency']) }, 'Org', 'name')
       @session.query(
-        "MATCH (a:Award {madmp_id: '#{award_id}'}) \
-         MATCH (o:Org {madmp_id: '#{org_id}'}) \
+        "MATCH (a:Award {uuid: '#{award_id}'}) \
+         MATCH (o:Org {uuid: '#{org_id}'}) \
          MERGE (o)-[r:FUNDED]->(a) \
          FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')")
     end
@@ -188,9 +187,9 @@ class Nsf
         state: cypher_safe(hash['awardeeStateCode'])
       }, 'Org', 'name')
       @session.query(
-        "MATCH (p:Person {madmp_id: '#{contributor_id}'}) \
-         MATCH (o:Org {madmp_id: '#{org_id}'}) \
-         MERGE (p)-[r:MEMBER_OF]->(o) \
+        "MATCH (p:Person {uuid: '#{contributor_id}'}) \
+         MATCH (o:Org {uuid: '#{org_id}'}) \
+         MERGE (p)-[r:AFFILIATED_WITH]->(o) \
          FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')")
     end
     contributor_id

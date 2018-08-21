@@ -1,6 +1,6 @@
 module Words
   STOP_WORDS = [
-    'project', 'plan',
+    'project', 'plan', 'dr.', 'dr', 'phd', 'p.h.d.',
     'a','cannot','into','our','thus','about','co','is','ours','to','above',
     'could','it','ourselves','together','across','down','its','out','too',
     'after','during','itself','over','toward','afterwards','each','last','own',

@@ -5,7 +5,7 @@ require_relative 'lib/database/nodes/project'
 
 ROOT = Dir.pwd
 CONFIG = YAML.load(File.read("#{ROOT}/config/database.yml")).symbolize_keys
-services = []
+debug, services = false, []
 
 # All for different args to run individual services or all of them
 if ARGV.empty?
@@ -13,23 +13,27 @@ if ARGV.empty?
   services = Dir["#{ROOT}/*/"].map{ |path| path.split('/').last }
 else
   ARGV.each do |service|
-    if Dir.exists?("#{ROOT}/lib/services/#{service}")
-      services << service unless service == 'sql_database'
+    if service == 'debug'
+      debug = true
     else
-      puts "SKIPPING: No directory found for #{service}. Expected ./lib/services/#{service}/#{service}.rb"
+      if Dir.exists?("#{ROOT}/lib/services/#{service}")
+        services << service unless service == 'sql_database'
+      else
+        puts "SKIPPING: No directory found for #{service}. Expected ./lib/services/#{service}/#{service}.rb"
+      end
     end
   end
 end
 
-@session = Database::Session.new(CONFIG.fetch(:neo4j, {}).symbolize_keys)
+@session = Database::Session.new(CONFIG.fetch(:neo4j, {}).symbolize_keys.merge({debug: debug}))
 
 # Testing
-project = Database::Project.new(session: @session, title: 'Testing', description: 'Blah blah blah', identifiers: ['a', 'b', 'c'], random: 'value')
-puts project.serialize_attributes
+#project = Database::Project.new(session: @session, title: 'Testing', description: 'Blah blah blah', identifiers: ['a', 'b', 'c'], random: 'value')
+#puts project.serialize_attributes
 
-loaded = Database::Project.find(@session, '42dc3caa8407d8115c67729a67cc58e8')
+#loaded = Database::Project.find(@session, '42dc3caa8407d8115c67729a67cc58e8')
 
-puts project.save
+#puts project.save
 
 services.each do |service|
   executable = "#{ROOT}/lib/services/#{service}/#{service}.rb"
@@ -37,7 +41,7 @@ services.each do |service|
     require executable
     clazz_name = service.gsub(/\s/, '').split(/_|\-/).to_a.reduce(''){ |out, part| out + part.capitalize }
     clazz = Object.const_get(clazz_name)
-    obj = clazz.new
+    obj = clazz.new({ session: @session })
     if obj.respond_to?(:process)
       puts "Running #{service}"
       puts "---------------------------------------"
@@ -45,9 +49,16 @@ services.each do |service|
 
       json[:projects].each do |project|
         puts "    Processing - `#{project[:title]}`"
-        project = Database::Project.new(project.merge({ session: @session }))
-        puts project.serialize_attributes
-        project.save
+        result = Database::Project.find_or_create(project.merge({ session: @session, source: service }))
+
+        puts "-------------------------------"
+        puts "PROJECT: #{result.uuid} -- #{result.title}"
+        puts "  IDENTIFIERS: #{result.identifiers.collect(&:uuid).join(', ')}"
+
+        result.save(project.merge(session: @session, source: service))
+        #project = Database::Project.find_or_create(project.merge({ session: @session }))
+        #puts project.serialize_attributes
+        #project.save
         puts "    -------"
       end
 
