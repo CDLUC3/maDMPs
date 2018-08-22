@@ -20,11 +20,12 @@ require 'date'
 require 'json'
 require 'uri'
 require 'net/http'
-require 'neo4j'
-require 'neo4j/core/cypher_session/adaptors/bolt'
 
-require_relative 'lib/database/session'
-require_relative 'lib/database/cypher_helper'
+require_relative '../../database/session'
+require_relative '../../database/cypher_helper'
+require_relative '../../database/nodes/award'
+require_relative '../../database/nodes/org'
+require_relative '../../database/nodes/person'
 
 class Nsf
   include Database::CypherHelper
@@ -41,23 +42,27 @@ class Nsf
     puts "Searching for available projects ..."
 
     scannable_projects.each do |project|
-      words = [project[:title], project_identifiers(project[:uuid])].flatten.uniq.join(' ')
+      words = [project.title, project_identifiers(project.uuid)].flatten.uniq.join(' ')
       keywords = Words.cleanse(words)
 
       awards = call_api(project, keywords)
     end
+
+    # Return an empty json array since this service saves directly to the DB right now
+    { projects: [] }
   end
 
   def scannable_projects
     min_date = Date.today - SCAN_THRESHOLD
     results = @session.cypher_query(
       "MATCH (p:Project) \
-       WHERE p.last_nsf_scan IS NULL OR p.last_nsf_scan < 'cypher_safe(#{min_date.to_s})' \
+       WHERE (p.last_nsf_scan IS NULL OR p.last_nsf_scan < 'cypher_safe(#{min_date.to_s})') \
+       AND p.title =~ '.*Ocean.*' \
        RETURN p"
     )
 
     if results.any? && results.rows.length > 0 && results.rows.first.is_a?(Array)
-      results.rows.map{ |row| row[0].props.select{ |k,v| k != :description } }
+      results.rows.map{ |row| Database::Project.cypher_response_to_object(row[0]) }
     else
       []
     end
@@ -80,7 +85,7 @@ class Nsf
     json = []
     uri = URI("#{ROOT_URL}.json?keyword=#{keywords.join('%20')}")
 
-    puts "    Searching NSF for project '#{project[:title]}'"
+    puts "    Searching NSF for project '#{project.title}'"
     res = Net::HTTP.get(uri)
     begin
       json << JSON.parse(res)
@@ -97,101 +102,91 @@ class Nsf
     end
 
     @session.cypher_query(
-      "MATCH (p:Project {uuid: '#{cypher_safe(project[:uuid])}'}) \
+      "MATCH (p:Project {uuid: '#{cypher_safe(project.uuid)}'}) \
        SET p.last_nsf_scan = '#{cypher_safe(Date.today.to_s)}'"
     )
   end
 
   def process_award(project, award)
-    puts "      Received award: '#{award['title']}'"
     # First verify that the Award title is similar to the project title
-    if Words.match_percent(award['title'], project[:title]) > 0.8
-      award_id = award_from_hash!(award)
+    if Words.match_percent((cleanse_nsf_title(award['title'])), project.title) > 0.8
+      obj = award_from_hash!(award)
 
       # Now that we have awards lets check the PI name to see if we can
       # verify that its for this project
-      name = cypher_safe("#{award['piFirstName']} #{award['piLastName']}")
+      contrib = person_from_hash!(award)
 
-      contribs = @session.cypher_query(
-        "MATCH (p:Project {uuid: '#{cypher_safe(project[:uuid])}'})<-[r:CONTRIBUTES_TO]-(u:Person)-[:AFFILIATED_WITH]->(o:Org) \
-         WHERE u.name =~ '.*#{name}.*' \
-         OR u.name =~ '.*#{cypher_safe(award['piLastName'])}.*' \
-         RETURN u, o")
-
-      # If any contributors were found we should also verify that their
-      # Org matches the Org in the award
-      if contribs.any? && contribs.rows.length > 0 && contribs.rows.first.is_a?(Array)
-        contribs.rows.each do |row|
-          if row.length > 1
-            if Words.match_percent(award['awardeeName'], row[1].props[:name]) > 0.8
-              contrib_id = row[0].props[:uuid]
-              puts "        Award title and PI match! Updating award information"
-
-              @session.query(
-                "MATCH (p:Project {uuid: '#{cypher_safe(project[:uuid])}'}) \
-                 MATCH (a:Award {uuid: '#{cypher_safe(award_id)}'}) \
-                 MERGE (p)-[r:RECEIVED]->(a) \
-                 FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')"
-              )
-            end
-          end
-        end
-      else
-        puts "        Award title matched project but contributor is unknown"
-        contrib_id = person_from_hash!(award)
-        @session.query(
-          "MATCH (p:Project {uuid: '#{cypher_safe(project[:uuid])}'}) \
-           MATCH (u:User {uuid: '#{cypher_safe(contrib_id)}'}) \
-           MATCH (a:Award {uuid: '#{cypher_safe(award_id)}'}) \
-           MERGE (p)-[r:RECEIVED]->(a) \
-           MERGE (u)-[r2:CONTRIBUTES_TO]->(p) \
-           FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}') \
-           FOREACH(s2 IN CASE WHEN '#{@source}' IN r2.sources THEN [] ELSE [1] END | SET r2.sources = coalesce(r2.sources, []) + '#{@source}')"
-        )
-      end
-    else
-      puts "        Award title does not match project title!"
+      puts "Saving (:Project)-[:RECEIVED]->(:Award)" if @session.debugging?
+      @session.cypher_query(cypher_relate(project, obj, 'RECEIVED', { source: @source }))
+      puts "Saving (:Person)-[:CONTRIBUTES_TO]->(:Project)" if @session.debugging?
+      @session.cypher_query(cypher_relate(contrib, project, 'CONTRIBUTES_TO', { source: @source }))
     end
   end
 
   def award_from_hash!(hash)
-    award_id = node_from_hash!({
-      title: cypher_safe(hash['title']),
+    params = {
+      session: @session,
+      source: @source,
+      title: cypher_safe(cleanse_nsf_title(hash['title'])),
       identifiers: [cypher_safe(hash['id'])],
       amount: cypher_safe(hash['fundsObligatedAmt']),
       date: cypher_safe(hash['date']),
       public_access_mandate: cypher_safe(hash['publicAccessMandate']),
       org: { name: cypher_safe(hash['agency']) }
-    }, 'Award', 'name')
+    }
+    title_parts = hash['title'].split(':')
+    if title_parts.length > 1
+      params[:types] = title_parts[0..title_parts.length - 1]
+    end
+    award = Database::Award.find_or_create(params)
+    puts "Saving (:Award)" if @session.debugging?
+    award.save(params)
 
     if hash['agency'].present?
-      org_id = node_from_hash!({ name: cypher_safe(hash['agency']) }, 'Org', 'name')
-      @session.query(
-        "MATCH (a:Award {uuid: '#{award_id}'}) \
-         MATCH (o:Org {uuid: '#{org_id}'}) \
-         MERGE (o)-[r:FUNDED]->(a) \
-         FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')")
+      org_hash = { session: @session, source: @source, name: cypher_safe(hash['agency']) }
+      org = Database::Org.find_or_create(org_hash)
+      puts "Saving (:Org)" if @session.debugging?
+      org.save(org_hash)
+
+      puts "Saving (:Org)-[:FUNDED]->(:Award)" if @session.debugging?
+      @session.cypher_query(cypher_relate(org, award, 'FUNDED', { source: @source }))
     end
-    award_id
+    award
   end
 
   def person_from_hash!(hash)
-    contributor_id = node_from_hash!({
+    params = {
+      session: @session,
+      source: @source,
       name: cypher_safe("#{hash['piFirstName']} #{hash['piLastName']}")
-    }, 'Person', 'name')
+    }
+    contributor = Database::Person.find_or_create(params)
+    puts "Saving (:Person)" if @session.debugging?
+    contributor.save(params)
 
     if hash['awardeeName'].present?
-      org_id = node_from_hash!({
+      org_params = {
+        session: @session,
+        source: @source,
         name: cypher_safe(hash['awardeeName']),
         city: cypher_safe(hash['awardeeCity']),
         state: cypher_safe(hash['awardeeStateCode'])
-      }, 'Org', 'name')
-      @session.query(
-        "MATCH (p:Person {uuid: '#{contributor_id}'}) \
-         MATCH (o:Org {uuid: '#{org_id}'}) \
-         MERGE (p)-[r:AFFILIATED_WITH]->(o) \
-         FOREACH(s IN CASE WHEN '#{@source}' IN r.sources THEN [] ELSE [1] END | SET r.sources = coalesce(r.sources, []) + '#{@source}')")
+      }
+      org = Database::Org.find_or_create(org_params)
+      puts "Saving (:Org)" if @session.debugging?
+      org.save(org_params)
+
+      puts "Saving (:Person)-[:AFFILIATED_WITH]->(:Org)" if @session.debugging?
+      @session.cypher_query(cypher_relate(contributor, org, 'AFFILIATED_WITH', { source: @source }))
     end
-    contributor_id
+    contributor
+  end
+
+  def cleanse_nsf_title(value)
+    # removes NSF categorizations from title e.g.:
+    #   original: 'EAGER: Collaborative Research: Exploratory application of single-molecule real time (SMRT) DNA sequencing in microbial ecology research'
+    #   becomes: 'Exploratory application of single-molecule real time (SMRT) DNA sequencing in microbial ecology research'
+
+    value.split(':').last
   end
 end

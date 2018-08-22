@@ -27,21 +27,13 @@ end
 
 @session = Database::Session.new(CONFIG.fetch(:neo4j, {}).symbolize_keys.merge({debug: debug}))
 
-# Testing
-#project = Database::Project.new(session: @session, title: 'Testing', description: 'Blah blah blah', identifiers: ['a', 'b', 'c'], random: 'value')
-#puts project.serialize_attributes
-
-#loaded = Database::Project.find(@session, '42dc3caa8407d8115c67729a67cc58e8')
-
-#puts project.save
-
 services.each do |service|
   executable = "#{ROOT}/lib/services/#{service}/#{service}.rb"
   if File.exists?(executable)
     require executable
     clazz_name = service.gsub(/\s/, '').split(/_|\-/).to_a.reduce(''){ |out, part| out + part.capitalize }
     clazz = Object.const_get(clazz_name)
-    obj = clazz.new({ session: @session })
+    obj = clazz.new({ session: @session, mysql: CONFIG.fetch(:mysql, {}) })
     if obj.respond_to?(:process)
       puts "Running #{service}"
       puts "---------------------------------------"
@@ -50,15 +42,7 @@ services.each do |service|
       json[:projects].each do |project|
         puts "    Processing - `#{project[:title]}`"
         result = Database::Project.find_or_create(project.merge({ session: @session, source: service }))
-
-        puts "-------------------------------"
-        puts "PROJECT: #{result.uuid} -- #{result.title}"
-        puts "  IDENTIFIERS: #{result.identifiers.collect(&:uuid).join(', ')}"
-
         result.save(project.merge(session: @session, source: service))
-        #project = Database::Project.find_or_create(project.merge({ session: @session }))
-        #puts project.serialize_attributes
-        #project.save
         puts "    -------"
       end
 

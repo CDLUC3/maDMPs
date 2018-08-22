@@ -147,7 +147,6 @@ module Database
       def self.fuzzy_match(**params)
         matches = []
         source, session = params.fetch(:source, ''), params.fetch(:session, nil)
-
         if session.present? && session.respond_to?(:cypher_query) && source.present?
           params.fetch(:identifiers, []).each do |id|
             unless id.blank?
@@ -180,7 +179,7 @@ module Database
                 words = Words.cleanse(v.to_s)
                 if words.length > 0
                   where_clause += " AND " unless where_clause.blank?
-                  where_clause += "(#{words.map{ |w| "n.#{k} =~ '.*(?i)#{cypher_safe(w)}.*'" }.join(' OR ')})"
+                  where_clause += "(#{words.map{ |w| "n.#{k} =~ '.*(?i)#{cypher_safe(w)}.*'" }.join(' AND ')})"
                 end
               end
             end

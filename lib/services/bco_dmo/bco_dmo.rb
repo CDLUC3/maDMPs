@@ -7,6 +7,10 @@ class BcoDmo
   SOURCE = "#{BASE_DIR}/bco_dmo.json"
   OUTPUT = "#{BASE_DIR}/output.json"
 
+  def initialize(params)
+
+  end
+
   def process
     if !File.exists?(SOURCE)
       puts "  SKIPPING: bco_dmo - You must retrieve the BCO-DMO json query (currently emailed) and place it into #{SOURCE}."
@@ -43,9 +47,12 @@ class BcoDmo
     projects, json = [], get_metadata
 
     json.each do |project|
+      title_parts = project['name'].split(':')
+
       proj_types, proj_ids = [], []
       proj_types << project['@type'] unless project['@type'].nil?
       proj_types << project['additionalType'] unless project['additionalType'].nil?
+      proj_types << title_parts.first if title_parts.length > 1
       proj_ids << project['@id'] unless project['@id'].nil?
       proj_ids << project['alternateName'] unless project['alternateName'].nil?
 
@@ -74,10 +81,10 @@ class BcoDmo
         }
 
         project['funder'][project['funder'].keys.first]['makesOffer'].each do |offer|
-          award_ids = [offer['@id'], offer['name'], offer['sameAs']]
+          award_ids = [offer['@id'], offer['name'], offer['name'].split('-').last, offer['sameAs']].uniq
           awards << {
             org: org_hash,
-            title: offer['name'].gsub('OCE-'),
+            title: offer['name'].split('-').last,
             identifiers: award_ids.select{|a| a.to_s },
             types: [offer['@type'], offer['additionalType']]
           }
@@ -105,7 +112,7 @@ class BcoDmo
         source: 'bco_dmo',
         identifiers: proj_ids,
         types: proj_types,
-        title: project['name'],
+        title: title_parts.last,
         description: project['description'],
         contributors: contributors.uniq,
         awards: awards.uniq,

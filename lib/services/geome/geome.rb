@@ -15,6 +15,10 @@ class Geome
   FIMS_FASTA_QUERY_PATH = "projects/query/fasta"
   FIMS_FASTA_MARKER_PATH = "projects/%{project_id}/config/lists/markers/fields"
 
+  def initialize(params)
+
+  end
+
   def process()
     puts "  Retrieving project metadata from the Geome API at: #{FIMS_ROOT_URL}."
     download

@@ -41,6 +41,7 @@ module Words
      !(token =~ /^[\d\.]+$/) &&           # no numbers
      !(token =~ /^http/) &&               # No URLs
      !(token =~ /^[a-fA-F0-9]{4,}$/) &&   # No UUIDs (dashes already removed)
+     token.length > 3 &&                  # word length must be > 3
      !(STOP_WORDS.member?(token)))
   end
 

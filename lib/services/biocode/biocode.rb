@@ -9,6 +9,10 @@ class Biocode
   SOURCE = "#{BASE_DIR}/biocode.xml"
   OUTPUT = "#{BASE_DIR}/output.json"
 
+  def initialize(params)
+
+  end
+
   def process
     if !File.exists?(SOURCE)
       puts "  SKIPPING: biocode - You must manually download the Biocode EML file from http://bnhmipt.berkeley.edu/ipt/resource?r=biocode and place it into #{SOURCE}."
