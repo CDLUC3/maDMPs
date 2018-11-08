@@ -36,6 +36,11 @@ class Nsf
   def initialize(params)
     @source = 'nsf-awards-api'
     @session = params.fetch(:session, nil)
+
+    org_hash = { session: @session, source: @source, name: cypher_safe('NSF') }
+    @org = Database::Org.find_or_create(org_hash)
+    puts "Saving (:Org)" if @session.debugging?
+    @org.save(org_hash)
   end
 
   def process()
@@ -142,13 +147,8 @@ class Nsf
     award.save(params)
 
     if hash['agency'].present?
-      org_hash = { session: @session, source: @source, name: cypher_safe(hash['agency']) }
-      org = Database::Org.find_or_create(org_hash)
-      puts "Saving (:Org)" if @session.debugging?
-      org.save(org_hash)
-
       puts "Saving (:Org)-[:FUNDED]->(:Award)" if @session.debugging?
-      @session.cypher_query(cypher_relate(org, award, 'FUNDED', { source: @source }))
+      @session.cypher_query(cypher_relate(@org, award, 'FUNDED', { source: @source }))
     end
     award
   end
