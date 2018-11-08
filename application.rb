@@ -10,7 +10,8 @@ debug, services = false, []
 # All for different args to run individual services or all of them
 if ARGV.empty?
   puts "No arguments specified. Running all of services."
-  services = Dir["#{ROOT}/lib/services/*/"].map{ |path| path.split('/').last }
+  #services = Dir["#{ROOT}/lib/services/*/"].map{ |path| path.split('/').last }
+  services = [ 'biocode', 'bco_dmo', 'dmptool', 'nsf' ]
 else
   ARGV.each do |service|
     if service == 'debug'
@@ -29,9 +30,7 @@ end
 
 services.each do |service|
   executable = "#{ROOT}/lib/services/#{service}/#{service}.rb"
-
-# Temporarily skip Geome service because their API has changed
-  if File.exists?(executable) && service != "geome"
+  if File.exists?(executable)
     require executable
     clazz_name = service.gsub(/\s/, '').split(/_|\-/).to_a.reduce(''){ |out, part| out + part.capitalize }
     clazz = Object.const_get(clazz_name)
