@@ -57,7 +57,6 @@ class Nsf
     results = @session.cypher_query(
       "MATCH (p:Project) \
        WHERE (p.last_nsf_scan IS NULL OR p.last_nsf_scan < 'cypher_safe(#{min_date.to_s})') \
-       AND p.title =~ '.*Ocean.*' \
        RETURN p"
     )
 

@@ -199,7 +199,7 @@ class Dmptool
     puts "Saving (:Person)-[:AFFILIATED_WITH]->(:Org)" if @session.debugging?
     @session.cypher_query(cypher_relate(contributor, org, 'AFFILIATED_WITH', { source: @source }))
 
-    puts "Saving (:Person)-[:CONTIBUTES_TO]->(:Project)" if @session.debugging?
+    puts "Saving (:Person)-[:CONTRIBUTES_TO]->(:Project)" if @session.debugging?
     @session.cypher_query(cypher_relate(contributor, project, 'CONTIBUTES_TO', { source: @source, role: role }))
 
     org
