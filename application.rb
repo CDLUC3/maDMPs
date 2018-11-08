@@ -10,16 +10,16 @@ debug, services = false, []
 # All for different args to run individual services or all of them
 if ARGV.empty?
   puts "No arguments specified. Running all of services."
-  services = Dir["#{ROOT}/*/"].map{ |path| path.split('/').last }
+  services = Dir["#{ROOT}/lib/services/*/"].map{ |path| path.split('/').last }
 else
   ARGV.each do |service|
     if service == 'debug'
       debug = true
     else
       if Dir.exists?("#{ROOT}/lib/services/#{service}")
-        services << service unless service == 'sql_database'
+        services << service
       else
-        puts "SKIPPING: No directory found for #{service}. Expected ./lib/services/#{service}/#{service}.rb"
+        puts "SKIPPING: No directory found for #{service}. Expected #{ROOT}/lib/services/#{service}/"
       end
     end
   end
@@ -39,18 +39,19 @@ services.each do |service|
       puts "---------------------------------------"
       json = obj.send(:process)
 
-      json[:projects].each do |project|
-        puts "    Processing - `#{project[:title]}`"
+      json[:projects].each_with_index do |project, idx|
+        puts "  -------------------------------------" unless idx == 0
+        puts "  Loading - `#{project[:title]}`"
         result = Database::Project.find_or_create(project.merge({ session: @session, source: service }))
         result.save(project.merge(session: @session, source: service))
-        puts "    -------"
       end
 
+      puts "---------------------------------------"
       puts "Done\n"
     else
       puts "SKIPPING: No method called 'process' found for #{service}"
     end
   else
-    puts "SKIPPING: No executable found for #{service}. Expected ./#{service}/#{service}.rb"
+    puts "SKIPPING: No executable found for #{service}. Expected #{ROOT}/lib/services/#{service}/#{service}.rb"
   end
 end

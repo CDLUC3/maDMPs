@@ -53,7 +53,7 @@ module Database
 
         puts "Searching for (:#{self.class_to_label})" if params[:session].debugging?
         node = cypher_response_to_object(self.fuzzy_match({
-          source: params.fetch(:source, ''),
+          source: params.fetch(:source, 'dmptool'),
           session: params.fetch(:session, nil),
           identifiers: identifiers,
           keywords: params.keys.include?(:title) ? { title: params[:title] } : { name: params.fetch(:name, '') }
