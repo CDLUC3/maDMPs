@@ -29,7 +29,9 @@ end
 
 services.each do |service|
   executable = "#{ROOT}/lib/services/#{service}/#{service}.rb"
-  if File.exists?(executable)
+
+# Temporarily skip Geome service because their API has changed
+  if File.exists?(executable) && service != "geome"
     require executable
     clazz_name = service.gsub(/\s/, '').split(/_|\-/).to_a.reduce(''){ |out, part| out + part.capitalize }
     clazz = Object.const_get(clazz_name)
