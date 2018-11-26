@@ -59,15 +59,17 @@ class BcoDmo
       contributors = []
       unless project['contributor'].nil?
         project['contributor'].each do |contrib_hash|
-          contributors << {
-            name: contrib_hash['contributor']['name'],
-            identifiers: [contrib_hash['contributor']['@id']],
-            role: contrib_hash['roleName'],
-            org: {
-              name: contrib_hash['odo:forOrganization']['name'],
-              type: contrib_hash['odo:forOrganization']['@type']
+          if contrib_hash['contributor']['name'].present?
+            contributors << {
+              name: contrib_hash['contributor']['name'],
+              identifiers: [contrib_hash['contributor']['@id']],
+              role: contrib_hash['roleName'],
+              org: {
+                name: contrib_hash['odo:forOrganization']['name'],
+                type: contrib_hash['odo:forOrganization']['@type']
+              }
             }
-          }
+          end
         end
       end
 

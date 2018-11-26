@@ -34,12 +34,11 @@ class Nsf
   SCAN_THRESHOLD = 7 #days
 
   def initialize(params)
-    @source = 'nsf-awards-api'
+    @source = 'nsf'
     @session = params.fetch(:session, nil)
 
-    org_hash = { session: @session, source: @source, name: cypher_safe('NSF') }
+    org_hash = { session: @session, source: @source, name: cypher_safe('National Science Foundation') }
     @org = Database::Org.find_or_create(org_hash)
-    puts "Saving (:Org)" if @session.debugging?
     @org.save(org_hash)
   end
 

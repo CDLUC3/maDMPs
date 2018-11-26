@@ -48,11 +48,13 @@ class Dmptool
     puts ""
     puts "Scanning DMPTool for known projects ..."
     scannable_projects.each do |project|
-      keywords = Words.cleanse(project.title)
+      if project.present?
+        keywords = Words.cleanse(project.title)
 
-      lookup_dmp(keywords).each do |plan|
-        puts "  Found match with #{plan.title}"
-        update_graph_project(project, plan)
+        lookup_dmp(keywords).each do |plan|
+          puts "  Found match with #{plan.title}"
+          update_graph_project(project, plan)
+        end
       end
     end
   end
@@ -200,7 +202,7 @@ class Dmptool
     @session.cypher_query(cypher_relate(contributor, org, 'AFFILIATED_WITH', { source: @source }))
 
     puts "Saving (:Person)-[:CONTRIBUTES_TO]->(:Project)" if @session.debugging?
-    @session.cypher_query(cypher_relate(contributor, project, 'CONTIBUTES_TO', { source: @source, role: role }))
+    @session.cypher_query(cypher_relate(contributor, project, 'CONTRIBUTES_TO', { source: @source, role: role }))
 
     org
   end

@@ -6,9 +6,9 @@ neo4j:
   password: 'neo4j'
 
 mysql:
-  adapter: 'mysql2',
+  adapter: 'mysql2'
   host: 'localhost'
-  database: 'dmp',
+  database: 'dmp'
   username: 'root'
   password: ''
   encoding: utf8mb4

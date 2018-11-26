@@ -192,11 +192,16 @@ module Database
         end
 
         unless matches.empty?
-          best_match = matches.sort{ |a,b| a[0]<=>b[0] }.last
-          if best_match.is_a?(Array)
-            best_match = best_match[0] if best_match[0].is_a?(Array)
-            puts "#{matches.any? ? "Found - uuid: #{best_match[0].props[:uuid]}" : 'No matches found.'}" if session.debugging?
-            best_match[0]
+          begin
+            best_match = matches.sort{ |a,b| a[0]<=>b[0] }.last
+            if best_match.is_a?(Array)
+              best_match = best_match[0] if best_match[0].is_a?(Array)
+              puts "#{matches.any? ? "Found - uuid: #{best_match[0].props[:uuid]}" : 'No matches found.'}" if session.debugging?
+              best_match[0]
+            end
+          rescue Exception => e
+            puts e.message
+            puts "-- Continuing on to the next record --"
           end
         else
           puts "no matches found." if session.debugging?
